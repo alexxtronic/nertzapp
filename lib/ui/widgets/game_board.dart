@@ -15,6 +15,8 @@ import '../../engine/move_validator.dart';
 import '../theme/game_theme.dart';
 import 'package:confetti/confetti.dart';
 import '../../services/audio_service.dart';
+import '../../utils/player_colors.dart';
+import 'settings_dialog.dart';
 
 /// Glassy, rounded card for the new aesthetic
 class GlassCard extends StatelessWidget {
@@ -315,7 +317,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       _countdownValue = 3;
     });
     
-    // AudioService().playBeep(); // 3 (Removed per request)
+    AudioService().playCountdown(); // Play countdown sound at start
     
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -438,12 +440,14 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   /// Reset the stock pile from waste
   void _resetStock() {
-    AudioService().playShuffle();
     final player = currentPlayer;
     if (player == null) return;
     if (!player.stockPile.isEmpty) return; // Only reset if empty
     if (player.wastePile.isEmpty) return;  // Nothing to reset
 
+    // Play shuffle sound only when actually resetting
+    AudioService().playShuffle();
+    
     // drawThree when stock is empty will trigger refill in PlayerState
     onMove?.call(Move(
       type: MoveType.drawThree,
@@ -645,6 +649,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                          border: Border.all(color: GameTheme.background, width: 2), // Space between avatars
                          color: Colors.white,
                          boxShadow: [
+                            // Color glow if player has assigned color
+                            if (opp.playerColor != null)
+                              BoxShadow(
+                                color: (PlayerColors.intToColor(opp.playerColor) ?? Colors.grey).withValues(alpha: 0.6),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 4,
@@ -664,7 +675,24 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                   );
                 }),
                 // Add a little padding at the end so the last one isn't clipped by the screen edge visually if margin is used
-                if (opponents.isNotEmpty) const SizedBox(width: 8), 
+                if (opponents.isNotEmpty) const SizedBox(width: 4),
+                
+                // Gear icon positioned below player bubbles
+                Container(
+                  margin: const EdgeInsets.only(left: 4),
+                  decoration: BoxDecoration(
+                    color: GameTheme.background.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 20),
+                    onPressed: () {
+                      showSettingsDialog(context);
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+                ),
               ],
             ),
           ),
@@ -771,11 +799,29 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   Widget _buildCenterPileSlot(int index, double width, double height) {
     final pile = gameState.centerPiles[index];
+    
+    // Check if this card was recently placed (within 2 seconds)
+    bool showGlow = false;
+    Color? glowColor;
+    
+    if (pile.lastPlacedTime != null && pile.lastPlayerId != null) {
+      final elapsed = DateTime.now().difference(pile.lastPlacedTime!);
+      if (elapsed.inSeconds < 2) {
+        showGlow = true;
+        // Find the player to get their color
+        final player = gameState.getPlayer(pile.lastPlayerId!);
+        if (player?.playerColor != null) {
+          glowColor = PlayerColors.intToColor(player!.playerColor);
+        }
+      }
+    }
+    
     return DragTarget<PlayingCard>(
       onWillAcceptWithDetails: (details) {
         return pile.canAdd(details.data);
       },
       onAcceptWithDetails: (details) {
+        AudioService().playPing(); // Play ping sound
         onMove?.call(Move(
           type: MoveType.toCenter,
           playerId: currentPlayerId,
@@ -798,6 +844,19 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               color: Colors.black.withValues(alpha: 0.15),
               width: 1.5,
             ),
+            // Add color glow if recently placed
+            boxShadow: showGlow && glowColor != null ? [
+              BoxShadow(
+                color: glowColor.withValues(alpha: 0.8),
+                blurRadius: 12,
+                spreadRadius: 3,
+              ),
+              BoxShadow(
+                color: glowColor.withValues(alpha: 0.4),
+                blurRadius: 20,
+                spreadRadius: 6,
+              ),
+            ] : null,
           ),
 
           child: pile.isEmpty
@@ -858,20 +917,35 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                 : Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Draggable<PlayingCard>(
-                        data: player.nertzPile.cards.last,
-                        feedback: Material(
-                          color: Colors.transparent,
-                          child: Transform.scale(
-                            scale: 1.1,
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+                          // Add player color glow
+                          boxShadow: [
+                            if (player.playerColor != null)
+                              BoxShadow(
+                                color: (PlayerColors.intToColor(player.playerColor) ?? Colors.grey).withValues(alpha: 0.5),
+                                blurRadius: 16,
+                                spreadRadius: 4,
+                              ),
+                            ...GameTheme.softShadow,
+                          ],
+                        ),
+                        child: Draggable<PlayingCard>(
+                          data: player.nertzPile.cards.last,
+                          feedback: Material(
+                            color: Colors.transparent,
+                            child: Transform.scale(
+                              scale: 1.1,
+                              child: GlassCard(card: player.nertzPile.cards.last),
+                            ),
+                          ),
+                          childWhenDragging: Opacity(
+                            opacity: 0.3,
                             child: GlassCard(card: player.nertzPile.cards.last),
                           ),
-                        ),
-                        childWhenDragging: Opacity(
-                          opacity: 0.3,
                           child: GlassCard(card: player.nertzPile.cards.last),
                         ),
-                        child: GlassCard(card: player.nertzPile.cards.last),
                       ),
                       Positioned(
                         bottom: -10,

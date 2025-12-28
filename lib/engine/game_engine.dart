@@ -105,7 +105,7 @@ class GameEngine {
     }
 
     // Use the specific pile index the user targeted (no auto-find)
-    gameState.playToCenterPile(card, move.targetPileIndex!);
+    gameState.playToCenterPile(card, move.targetPileIndex!, playerId: player.id);
 
     // Removed automatic win trigger - User must press Nertz Button!
     // if (player.hasEmptiedNertz) {

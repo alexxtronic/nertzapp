@@ -181,14 +181,21 @@ class WastePile extends Pile {
   );
 }
 
-/// Center pile - shared pile built by suit from Ace to King
-/// Generic slot: any Ace can start, then same suit ascending
 class CenterPile extends Pile {
   @override
   final List<PlayingCard> cards;
   
-  CenterPile([List<PlayingCard>? initialCards]) 
-      : cards = initialCards ?? [];
+  /// Track which player placed the last card (for color glow)
+  String? lastPlayerId;
+  
+  /// Track when the last card was placed (for glow fade animation)
+  DateTime? lastPlacedTime;
+  
+  CenterPile({
+    List<PlayingCard>? initialCards,
+    this.lastPlayerId,
+    this.lastPlacedTime,
+  }) : cards = initialCards ?? [];
   
   /// The suit of this pile (determined by the first card)
   Suit? get suit => cards.isEmpty ? null : cards.first.suit;
@@ -205,9 +212,11 @@ class CenterPile extends Pile {
   }
   
   /// Add a card to the pile
-  void push(PlayingCard card) {
+  void push(PlayingCard card, {String? playerId}) {
     assert(canAdd(card), 'Invalid move: $card cannot be placed on center pile');
     cards.add(card);
+    lastPlayerId = playerId;
+    lastPlacedTime = DateTime.now();
   }
   
   /// Check if the pile is complete (has all 13 cards)
@@ -224,9 +233,15 @@ class CenterPile extends Pile {
   Map<String, dynamic> toJson() => {
     'type': 'center',
     'cards': cards.map((c) => c.toJson()).toList(),
+    'lastPlayerId': lastPlayerId,
+    'lastPlacedTime': lastPlacedTime?.toIso8601String(),
   };
   
   factory CenterPile.fromJson(Map<String, dynamic> json) => CenterPile(
-    (json['cards'] as List).map((c) => PlayingCard.fromJson(c)).toList(),
+    initialCards: (json['cards'] as List).map((c) => PlayingCard.fromJson(c)).toList(),
+    lastPlayerId: json['lastPlayerId'] as String?,
+    lastPlacedTime: json['lastPlacedTime'] != null 
+        ? DateTime.parse(json['lastPlacedTime'] as String)
+        : null,
   );
 }

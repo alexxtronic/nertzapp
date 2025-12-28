@@ -5,6 +5,7 @@ library;
 import 'card.dart';
 import 'pile.dart';
 import 'player_state.dart';
+import '../utils/player_colors.dart';
 
 /// Current phase of the game
 enum GamePhase {
@@ -121,6 +122,26 @@ class GameState {
     }
 
     phase = GamePhase.playing;
+    
+    // Assign player colors if not already assigned (first round)
+    _assignPlayerColors();
+  }
+  
+  /// Assign random colors to players who don't have one yet
+  void _assignPlayerColors() {
+    final playerIds = players.keys.toList();
+    final colorAssignments = PlayerColors.assignColors(playerIds);
+    
+    for (final playerId in playerIds) {
+      final player = players[playerId]!;
+      // Only assign if player doesn't have a color yet
+      if (player.playerColor == null) {
+        final assignedColor = colorAssignments[playerId]!;
+        players[playerId] = player.copyWith(
+          playerColor: PlayerColors.colorToInt(assignedColor),
+        );
+      }
+    }
   }
 
   /// Find a center pile that can accept this card
@@ -155,10 +176,10 @@ class GameState {
   }
 
   /// Play to a specific center pile (for targeted moves)
-  void playToCenterPile(PlayingCard card, int pileIndex) {
+  void playToCenterPile(PlayingCard card, int pileIndex, {String? playerId}) {
     assert(pileIndex >= 0 && pileIndex < centerPiles.length);
     assert(centerPiles[pileIndex].canAdd(card));
-    centerPiles[pileIndex].push(card);
+    centerPiles[pileIndex].push(card, playerId: playerId);
   }
 
   int countPlayerCardsInCenter(String playerId) {

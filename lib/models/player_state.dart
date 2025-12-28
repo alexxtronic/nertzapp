@@ -20,6 +20,7 @@ class PlayerState {
   final String? avatarUrl;
   final int wins;
   final bool isBot;
+  final int? playerColor; // Stored as ARGB int for JSON serialization
 
   PlayerState({
     required this.id,
@@ -35,6 +36,7 @@ class PlayerState {
     this.avatarUrl,
     this.wins = 0,
     this.isBot = false,
+    this.playerColor,
   });
 
   PlayerRank get rank {
@@ -74,6 +76,7 @@ class PlayerState {
       avatarUrl: avatarUrl,
       wins: wins,
       isBot: isBot,
+      playerColor: null, // Color assigned later by game logic
     );
   }
 
@@ -149,6 +152,7 @@ class PlayerState {
     String? avatarUrl,
     int? wins,
     bool? isBot,
+    int? playerColor,
   }) {
     return PlayerState(
       id: id ?? this.id,
@@ -164,6 +168,7 @@ class PlayerState {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       wins: wins ?? this.wins,
       isBot: isBot ?? this.isBot,
+      playerColor: playerColor ?? this.playerColor,
     );
   }
 
@@ -181,6 +186,7 @@ class PlayerState {
     'avatarUrl': avatarUrl,
     'wins': wins,
     'isBot': isBot,
+    'playerColor': playerColor,
   };
 
   factory PlayerState.fromJson(Map<String, dynamic> json) => PlayerState(
@@ -197,6 +203,7 @@ class PlayerState {
     avatarUrl: json['avatarUrl'] as String?,
     wins: json['wins'] as int? ?? 0,
     isBot: json['isBot'] as bool? ?? false,
+    playerColor: json['playerColor'] as int?,
   );
 }
 
