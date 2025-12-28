@@ -1,0 +1,74 @@
+name: nertz_royale
+description: "Nertz Royale - A realtime multiplayer card game for iOS and Android"
+publish_to: 'none'
+version: 1.0.0+1
+
+# Tech Stack Decision: Flutter
+# 
+# We chose Flutter for the following reasons:
+# 1. Superior animation performance via Skia rendering engine - critical for 60fps card animations
+# 2. Excellent gesture detection system for complex drag-and-drop interactions
+# 3. True native performance without JS bridge overhead
+# 4. Single codebase with consistent behavior across iOS and Android
+# 5. State management options (Riverpod) excellent for complex realtime game state
+# 6. Hot reload enables rapid iteration during game development
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State management - declarative, testable, composable
+  flutter_riverpod: ^2.6.1
+  
+  # WebSocket for realtime multiplayer
+  web_socket_channel: ^3.0.2
+  
+  # Unique identifiers for cards and players
+  uuid: ^4.5.1
+  
+  # JSON serialization for network protocol
+  json_annotation: ^4.9.0
+  
+  # Cupertino icons for iOS-style icons
+  cupertino_icons: ^1.0.8
+
+  # Backend - Auth, Database, Realtime, Storage
+  supabase_flutter: ^2.8.0
+
+  # Image handling
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # Code generation for JSON serialization
+  build_runner: ^2.4.15
+  json_serializable: ^6.9.6
+  
+  # Linting
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  
+  # Assets for app logo and images
+  assets:
+    - assets/app_icon.jpg
+    - assets/nertz_button.png
+    - assets/card_back.png
+
+# App icon configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.jpg"
+  min_sdk_android: 21
+  remove_alpha_ios: true
