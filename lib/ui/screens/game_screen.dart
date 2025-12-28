@@ -307,29 +307,6 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
                 },
               ),
             ),
-          // Settings gear icon (upper left, under the logo)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 50,
-            left: 16,
-            child: IconButton(
-              onPressed: _showSettingsMenu,
-              iconSize: 20,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.settings,
-                  color: Colors.white70,
-                  size: 18,
-                ),
-              ),
-            ),
-          ),
           // NERTZ button overlay when player empties their pile
           if (showNertzButton)
             _buildNertzButtonOverlay(playerId),
