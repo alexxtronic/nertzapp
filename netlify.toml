@@ -1,0 +1,20 @@
+[build]
+  publish = "build/web"
+  command = """
+    # Install Flutter
+    git clone https://github.com/flutter/flutter.git -b stable --depth 1
+    export PATH="$PATH:`pwd`/flutter/bin"
+    flutter precache --web
+    flutter config --enable-web
+    # Build
+    flutter build web --release
+  """
+
+[build.environment]
+  FLUTTER_WEB_USE_SKIA = "true"
+
+# Handle SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
