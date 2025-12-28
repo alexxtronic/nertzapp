@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/card.dart';
 import '../../models/game_state.dart';
@@ -238,7 +239,11 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   
   /// Draw up to 3 cards from stock to waste with staggered animation
   void _drawFromStock() {
-    if (_isDrawing) return;
+    debugPrint('🎴 _drawFromStock called. _isDrawing=$_isDrawing');
+    if (_isDrawing) {
+      debugPrint('🎴 Ignoring - already drawing');
+      return;
+    }
     _isDrawing = true;
 
     final player = currentPlayer;
@@ -263,11 +268,15 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     final cardsToDraw = player.stockPile.length.clamp(1, 3);
     _cardsToAnimate = cardsToDraw;
     
+    debugPrint('🎴 Stock has ${player.stockPile.length} cards, drawing $cardsToDraw');
+    
     // Capture the IDs of cards that will be drawn (they're at the top of the stock pile)
     // Stock pile is LIFO, so the last N cards will be drawn
     final stockCards = player.stockPile.cards;
     final cardsBeingDrawn = stockCards.sublist(stockCards.length - cardsToDraw).reversed.toList();
     final cardIdsBeingDrawn = cardsBeingDrawn.map((c) => c.id).toList();
+    
+    debugPrint('🎴 Cards being drawn: $cardIdsBeingDrawn');
     
     // Clear the revealed cards set - none are visible initially
     _revealedCardIds = {};
@@ -278,21 +287,32 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       playerId: currentPlayerId,
     ));
     
-    // Animate cards appearing one at a time at 0.25s intervals
+    debugPrint('🎴 Move executed. Starting animation timers...');
+    
+    // Animate cards appearing one at a time at 0.15s intervals
     for (int i = 0; i < cardIdsBeingDrawn.length; i++) {
       final cardId = cardIdsBeingDrawn[i];
-      final timer = Timer(Duration(milliseconds: 250 * (i + 1)), () {
+      final timer = Timer(Duration(milliseconds: 150 * (i + 1)), () {
         if (mounted) {
+          debugPrint('🎴 Revealing card ${i + 1}/$cardsToDraw: $cardId');
           setState(() {
             _revealedCardIds.add(cardId);
           });
+          
+          // Haptic feedback
+          if (i == cardIdsBeingDrawn.length - 1) {
+             HapticFeedback.mediumImpact(); // Heavier for final card
+          } else {
+             HapticFeedback.lightImpact(); // Light for others
+          }
         }
       });
       _cardRevealTimers.add(timer);
     }
     
     // Allow next draw after animation completes
-    Timer(Duration(milliseconds: 250 * cardsToDraw + 100), () {
+    Timer(Duration(milliseconds: 150 * cardsToDraw + 100), () {
+      debugPrint('🎴 Animation complete. Resetting _isDrawing');
       _isDrawing = false;
       // After animation completes, mark all cards as revealed
       if (mounted) {

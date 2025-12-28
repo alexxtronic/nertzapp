@@ -178,11 +178,12 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         client.send(StateSnapshotMessage(gameState: state!));
       }
     } else if (message is StartGameMessage) {
-      debugPrint('📨 StartGameMessage received! Starting round...');
-      // If we're not the host, we need to start the round when host broadcasts start
+      debugPrint('📨 StartGameMessage received! Ensuring state sync...');
+      // Critical: Do NOT shuffle locally (startRound). Wait for StateSnapshot.
+      // If we are still in lobby, request state to be safe.
       if (state != null && state!.phase == GamePhase.lobby) {
-        state!.startRound();
-        state = GameState.fromJson(state!.toJson()); // Trigger rebuild
+        debugPrint('📨 Still in lobby phase. Requesting state snapshot from host...');
+        client.send(RequestStateMessage(matchId: state!.matchId, playerId: playerId));
       }
     }
   }
@@ -244,6 +245,11 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         (state!.phase == GamePhase.roundEnd || state!.phase == GamePhase.lobby)) {
       state!.startRound();
       state = GameState.fromJson(state!.toJson());
+      
+      // Broadcast the shuffled state to all players so they have the same decks
+      debugPrint('🏠 Broadcasting initial game state to all players...');
+      client.send(StateSnapshotMessage(gameState: state!));
+      
       client.startGame(state!.matchId);
     }
   }
