@@ -21,9 +21,6 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Supabase init failed: $e. Check config.dart.');
   }
-  
-  // Start background music
-  AudioService().startBackgroundMusic();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
