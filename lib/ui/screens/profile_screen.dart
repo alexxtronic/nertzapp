@@ -405,7 +405,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.asset(trophyAsset, width: 100, height: 100, fit: BoxFit.contain),
+                              child: ColorFiltered(
+                                colorFilter: const ColorFilter.matrix([
+                                  1.3, 0, 0, 0, 0,
+                                  0, 1.3, 0, 0, 0,
+                                  0, 0, 1.3, 0, 0,
+                                  0, 0, 0, 1, 0,
+                                ]),
+                                child: Image.asset(trophyAsset, width: 100, height: 100, fit: BoxFit.contain),
+                              ),
                             ),
                           ),
                        ],

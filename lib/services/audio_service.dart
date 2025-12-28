@@ -54,9 +54,9 @@ class AudioService {
     }
   }
 
-  /// Countdown beep (3..2..1)
-  Future<void> playBeep() async {
-    await playSound('audio/beep.mp3'); 
+  /// Shuffle sound
+  Future<void> playShuffle() async {
+    await playSound('audio/shuffle.mp3'); 
   }
 
   /// Go! sound

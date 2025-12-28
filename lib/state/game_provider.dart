@@ -78,6 +78,12 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         return;
       }
       
+      // Wait for countdown (4 seconds)
+      if (state!.roundStartTime != null) {
+        final elapsed = DateTime.now().difference(state!.roundStartTime!);
+        if (elapsed.inSeconds < 4) return;
+      }
+      
       final bots = state!.players.values.where((p) => p.isBot).toList();
       if (bots.isEmpty) return;
       

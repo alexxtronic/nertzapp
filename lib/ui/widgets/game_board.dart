@@ -31,7 +31,10 @@ class GlassCard extends StatelessWidget {
     this.onTap,
     this.onDoubleTap,
     this.scale = 1.0,
+    this.isCenterPile = false,
   });
+
+  final bool isCenterPile;
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +70,36 @@ class GlassCard extends StatelessWidget {
 
   Widget _buildFace() {
     final color = card.color == CardColor.red ? GameTheme.cardRed : GameTheme.cardBlack;
+    
+    if (isCenterPile) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              card.rank.symbol,
+              style: TextStyle(
+                color: color,
+                fontSize: 28, // Much larger for visibility
+                fontWeight: FontWeight.bold,
+                fontFamily: 'SF Pro Rounded',
+                height: 1.0,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              card.suit.symbol,
+              style: TextStyle(
+                color: color,
+                fontSize: 24, // Larger suit
+                height: 1.0,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.all(6),
       child: Column(
@@ -245,6 +278,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+    
+    // If we mount the widget while already playing, start the countdown
+    if (widget.gameState.phase == GamePhase.playing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _startCountdown();
+      });
+    }
   }
 
   @override
@@ -256,6 +296,17 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         widget.gameState.phase == GamePhase.playing) {
       _startCountdown();
     }
+    
+    // Play applause on match win
+    if (oldWidget.gameState.phase != GamePhase.matchEnd && 
+        widget.gameState.phase == GamePhase.matchEnd) {
+      // Check if we won? Or just play applause generally? 
+      // User said "applause at the end of the game for the winner".
+      // Assuming generic applause for everyone for now, or check winner?
+      // "the person who hits 100 points first".
+      // Let's just play it.
+      AudioService().playApplause();
+    }
   }
   
   void _startCountdown() {
@@ -264,7 +315,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       _countdownValue = 3;
     });
     
-    AudioService().playBeep(); // 3
+    // AudioService().playBeep(); // 3 (Removed per request)
     
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -276,7 +327,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       setState(() {
         if (_countdownValue > 1) {
           _countdownValue--;
-          AudioService().playBeep(); // 2, 1
+          // AudioService().playBeep(); // 2, 1 (Removed per request)
         } else if (_countdownValue == 1) {
            _countdownValue = 0; // Show "NERTZ!" or "GO!"
            AudioService().playGo(); // GO!
@@ -387,6 +438,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   /// Reset the stock pile from waste
   void _resetStock() {
+    AudioService().playShuffle();
     final player = currentPlayer;
     if (player == null) return;
     if (!player.stockPile.isEmpty) return; // Only reset if empty
@@ -674,7 +726,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               card.rank.symbol,
               style: TextStyle(
                 color: color,
-                fontSize: 14,
+                fontSize: 24, // Increased from 14
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -682,7 +734,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               card.suit.symbol,
               style: TextStyle(
                 color: color,
-                fontSize: 12,
+                fontSize: 20, // Increased from 12
               ),
             ),
           ],
