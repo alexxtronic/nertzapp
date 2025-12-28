@@ -12,7 +12,11 @@ import '../../models/game_state.dart';
 import '../../models/player_state.dart';
 import '../../models/pile.dart';
 import '../../engine/move_validator.dart';
+import '../../models/pile.dart';
+import '../../engine/move_validator.dart';
 import '../theme/game_theme.dart';
+import 'package:confetti/confetti.dart';
+import '../../services/audio_service.dart';
 
 /// Glassy, rounded card for the new aesthetic
 class GlassCard extends StatelessWidget {
@@ -222,6 +226,9 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   int _countdownValue = 0;
   bool _showCountdown = false;
   Timer? _countdownTimer;
+  
+  // Confetti
+  late ConfettiController _confettiController;
 
   GameState get gameState => widget.gameState;
   String get currentPlayerId => widget.currentPlayerId;
@@ -233,8 +240,15 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   List<PlayerState> get opponents => gameState.players.values
       .where((p) => p.id != currentPlayerId)
       .where((p) => p.id != currentPlayerId)
+      .where((p) => p.id != currentPlayerId)
       .toList();
       
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+  }
+
   @override
   void didUpdateWidget(GameBoard oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -252,6 +266,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       _countdownValue = 3;
     });
     
+    AudioService().playBeep(); // 3
+    
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -262,8 +278,10 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       setState(() {
         if (_countdownValue > 1) {
           _countdownValue--;
+          AudioService().playBeep(); // 2, 1
         } else if (_countdownValue == 1) {
            _countdownValue = 0; // Show "NERTZ!" or "GO!"
+           AudioService().playGo(); // GO!
         } else {
            // Done
            _showCountdown = false;
@@ -279,6 +297,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       timer.cancel();
     }
     _countdownTimer?.cancel();
+    _confettiController.dispose();
     super.dispose();
   }
   
@@ -423,10 +442,45 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               },
             ),
             if (_showCountdown) _buildCountdownOverlay(),
+            Align(
+              alignment: Alignment.center,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                colors: const [Colors.red, Colors.blue, Colors.green, Colors.yellow, Colors.purple],
+                createParticlePath: drawStar, 
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+  
+  /// Helper to draw star confetti
+  Path drawStar(Size size) {
+    // Method to convert degree to radians
+    double degToRad(double deg) => deg * (math.pi / 180.0);
+
+    const numberOfPoints = 5;
+    final halfWidth = size.width / 2;
+    final externalRadius = halfWidth;
+    final internalRadius = halfWidth / 2.5;
+    final degreesPerStep = degToRad(360 / numberOfPoints);
+    final halfDegreesPerStep = degreesPerStep / 2;
+    final path = Path();
+    final fullAngle = degToRad(360);
+    path.moveTo(size.width, halfWidth);
+
+    for (double step = 0; step < fullAngle; step += degreesPerStep) {
+      path.lineTo(halfWidth + externalRadius * math.cos(step),
+          halfWidth + externalRadius * math.sin(step));
+      path.lineTo(halfWidth + internalRadius * math.cos(step + halfDegreesPerStep),
+          halfWidth + internalRadius * math.sin(step + halfDegreesPerStep));
+    }
+    path.close();
+    return path;
   }
 
   Widget _buildHeader(PlayerState player) {
@@ -700,6 +754,10 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                 ? GestureDetector(
                     onTap: () {
                       HapticFeedback.heavyImpact(); // Strong haptics
+                      AudioService().playExplosion();
+                      AudioService().playApplause();
+                      _confettiController.play();
+                      
                       onMove?.call(Move(
                         type: MoveType.callNertz, 
                         playerId: currentPlayerId

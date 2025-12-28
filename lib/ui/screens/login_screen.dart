@@ -110,7 +110,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(30),
                     child: Image.asset(
-                      'assets/app_icon.jpg',
+                      'assets/app_icon.png',
                       fit: BoxFit.cover,
                       errorBuilder: (_,__,___) => const Icon(Icons.style, size: 60, color: GameTheme.primary),
                     ),

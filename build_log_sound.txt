@@ -1,0 +1,148 @@
+Compiling lib/main.dart for the Web...                          
+Wasm dry run succeeded. Consider building and testing your application with the `--wasm` flag. See docs for more info: https://docs.flutter.dev/platform-integration/web/wasm
+Use --no-wasm-dry-run to disable these warnings.
+Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
+lib/ui/widgets/game_board.dart:1305:1:
+Error: Expected a declaration, but got '}'.
+}
+^
+lib/ui/widgets/game_board.dart:545:59:
+Error: Undefined name 'currentPlayerId'.
+                    '${gameState.countPlayerCardsInCenter(currentPlayerId)} pts',
+                                                          ^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:545:24:
+Error: Undefined name 'gameState'.
+                    '${gameState.countPlayerCardsInCenter(currentPlayerId)} pts',
+                       ^^^^^^^^^
+lib/ui/widgets/game_board.dart:564:20:
+Error: Undefined name 'opponents'.
+                ...opponents.take(3).map((opp) {
+                   ^^^^^^^^^
+lib/ui/widgets/game_board.dart:592:21:
+Error: Undefined name 'opponents'.
+                if (opponents.isNotEmpty) const SizedBox(width: 8), 
+                    ^^^^^^^^^
+lib/ui/widgets/game_board.dart:627:20:
+Error: Undefined name 'gameState'.
+                '${gameState.centerPiles.where((p) => !p.isEmpty).length}/16',
+                   ^^^^^^^^^
+lib/ui/widgets/game_board.dart:698:18:
+Error: Undefined name 'gameState'.
+    final pile = gameState.centerPiles[index];
+                 ^^^^^^^^^
+lib/ui/widgets/game_board.dart:706:21:
+Error: Undefined name 'currentPlayerId'.
+          playerId: currentPlayerId,
+                    ^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:704:9:
+Error: Undefined name 'onMove'.
+        onMove?.call(Move(
+        ^^^^^^
+lib/ui/widgets/game_board.dart:710:9:
+Error: Undefined name 'onCenterPilePlaced'.
+        onCenterPilePlaced?.call(); // Trigger +1 animation
+        ^^^^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:760:23:
+Error: Undefined name '_confettiController'.
+                      _confettiController.play();
+                      ^^^^^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:764:35:
+Error: Undefined name 'currentPlayerId'.
+                        playerId: currentPlayerId
+                                  ^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:762:23:
+Error: Undefined name 'onMove'.
+                      onMove?.call(Move(
+                      ^^^^^^
+lib/ui/widgets/game_board.dart:851:25:
+Error: Method not found: '_drawFromStock'.
+                        _drawFromStock();
+                        ^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:853:25:
+Error: Method not found: '_resetStock'.
+                        _resetStock();
+                        ^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:996:27:
+Error: Undefined name 'currentPlayerId'.
+                playerId: currentPlayerId,
+                          ^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:994:15:
+Error: Undefined name 'onMove'.
+              onMove?.call(Move(
+              ^^^^^^
+lib/ui/widgets/game_board.dart:1186:17:
+Error: Undefined name 'currentPlayerId'.
+      playerId: currentPlayerId,
+                ^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:1184:5:
+Error: Undefined name 'onMove'.
+    onMove?.call(Move(
+    ^^^^^^
+lib/ui/widgets/game_board.dart:1208:9:
+Error: Undefined name '_cardsToAnimate'.
+    if (_cardsToAnimate > 0) {
+        ^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:1210:51:
+Error: Undefined name '_cardsToAnimate'.
+      final newlyDrawnStart = wasteCards.length - _cardsToAnimate;
+                                                  ^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:1220:51:
+Error: Undefined name '_revealedCardIds'.
+        if (cardIndexInWaste < newlyDrawnStart || _revealedCardIds.contains(card.id)) {
+                                                  ^^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:1271:9:
+Error: Undefined name '_countdownValue'.
+    if (_countdownValue > 0) {
+        ^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:1272:14:
+Error: Undefined name '_countdownValue'.
+      text = _countdownValue.toString();
+             ^^^^^^^^^^^^^^^
+lib/ui/widgets/game_board.dart:1281:25:
+Error: Undefined name '_countdownValue'.
+          key: ValueKey(_countdownValue),
+                        ^^^^^^^^^^^^^^^
+Error: Compilation failed.
+  Command: /opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart compile js --platform-binaries=/opt/homebrew/share/flutter/bin/cache/flutter_web_sdk/kernel --invoker=flutter_tool -Ddart.vm.product=true -DFLUTTER_VERSION=3.38.5 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=f6ff1529fd -DFLUTTER_ENGINE_REVISION=1527ae0ec5 -DFLUTTER_DART_VERSION=3.10.4 -DFLUTTER_WEB_USE_SKIA=true -DFLUTTER_WEB_USE_SKWASM=false -DFLUTTER_WEB_CANVASKIT_URL=https://www.gstatic.com/flutter-canvaskit/1527ae0ec577a4ef50e65f6fefcfc1326707d9bf/ --native-null-assertions --no-source-maps -O4 --minify -o /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/.dart_tool/flutter_build/80f848b790044eb72c08575ecb0517ac/app.dill --packages=/Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/.dart_tool/package_config.json --cfe-only /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/.dart_tool/flutter_build/80f848b790044eb72c08575ecb0517ac/main.dart
+#0      RunResult.throwException (package:flutter_tools/src/base/process.dart:153:5)
+#1      _DefaultProcessUtils.run (package:flutter_tools/src/base/process.dart:379:19)
+<asynchronous suspension>
+#2      Dart2JSTarget.build (package:flutter_tools/src/build_system/targets/web.dart:207:5)
+<asynchronous suspension>
+#3      _BuildInstance._invokeInternal (package:flutter_tools/src/build_system/build_system.dart:895:9)
+<asynchronous suspension>
+#4      Future.wait.<anonymous closure> (dart:async/future.dart:546:21)
+<asynchronous suspension>
+#5      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:833:32)
+<asynchronous suspension>
+#6      Future.wait.<anonymous closure> (dart:async/future.dart:546:21)
+<asynchronous suspension>
+#7      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:833:32)
+<asynchronous suspension>
+#8      FlutterBuildSystem.build (package:flutter_tools/src/build_system/build_system.dart:653:16)
+<asynchronous suspension>
+#9      WebBuilder.buildWeb (package:flutter_tools/src/web/compile.dart:94:34)
+<asynchronous suspension>
+#10     BuildWebCommand.runCommand (package:flutter_tools/src/commands/build_web.dart:296:5)
+<asynchronous suspension>
+#11     FlutterCommand.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command.dart:1559:27)
+<asynchronous suspension>
+#12     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#13     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+<asynchronous suspension>
+#14     FlutterCommandRunner.runCommand.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:487:9)
+<asynchronous suspension>
+#15     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#16     FlutterCommandRunner.runCommand (package:flutter_tools/src/runner/flutter_command_runner.dart:422:5)
+<asynchronous suspension>
+#17     run.<anonymous closure>.<anonymous closure> (package:flutter_tools/runner.dart:104:11)
+<asynchronous suspension>
+#18     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#19     main (package:flutter_tools/executable.dart:103:3)
+<asynchronous suspension>
+
+Compiling lib/main.dart for the Web...                             38.2s
+Error: Failed to compile application for the Web.

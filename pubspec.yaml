@@ -38,6 +38,10 @@ dependencies:
   # Backend - Auth, Database, Realtime, Storage
   supabase_flutter: ^2.8.0
 
+  # Audio & Visuals
+  audioplayers: ^6.0.0
+  confetti: ^0.7.0
+
   # Image handling
   image_picker: ^1.1.2
   flutter_image_compress: ^2.3.0

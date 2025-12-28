@@ -275,7 +275,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                  tag: 'app_logo',
                  child: ClipRRect(
                    borderRadius: BorderRadius.circular(12),
-                   child: Image.asset('assets/app_icon.jpg', width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.style, color: GameTheme.primary)),
+                   child: Image.asset('assets/app_icon.png', width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.style, color: GameTheme.primary)),
                  ),
                ),
                const SizedBox(width: 12),
