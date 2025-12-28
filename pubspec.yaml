@@ -69,7 +69,9 @@ flutter:
     - assets/trophies/
     - assets/nertz_button.png
     - assets/card_back.png
+    - assets/card_back.png
     - assets/default_avatar.jpg
+    - assets/audio/
 
 # App icon configuration
 flutter_launcher_icons:

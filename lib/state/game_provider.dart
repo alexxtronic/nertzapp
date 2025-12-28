@@ -72,8 +72,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   void _startBotLoop() {
     _botTimer?.cancel();
     debugPrint('🤖 Starting bot loop...');
-    // 600ms interval = ~30% slower than 400ms
-    _botTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
+    // 1000ms interval = Significantly slower per user request
+    _botTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
       if (state == null || state!.phase != GamePhase.playing) {
         return;
       }
@@ -86,6 +86,13 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         final move = BotLogic.findBestMove(state!, bot.id);
         if (move != null) {
           executeMove(move);
+          
+          // Bots don't need to press the button - auto-win if Nertz pile empty
+          // Fetch updated state for this bot
+          final updatedBot = state!.players[bot.id];
+          if (updatedBot != null && updatedBot.nertzPile.isEmpty) {
+            executeMove(Move(type: MoveType.callNertz, playerId: bot.id));
+          }
         } else {
           // 2. If no move, draw cards more frequently (every other tick)
           if (DateTime.now().millisecondsSinceEpoch % 2 == 0) {

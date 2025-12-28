@@ -40,10 +40,17 @@ class AudioService {
       _poolIndex = (_poolIndex + 1) % _poolSize;
       
       await player.stop(); // Stop potential previous sound
-      await player.setSource(AssetSource(assetPath));
-      await player.resume();
+      
+      // Safety check for web or missing assets
+      try {
+        await player.setSource(AssetSource(assetPath));
+        await player.resume();
+      } catch (e) {
+        debugPrint('Failed to load/play sound $assetPath: $e');
+        // Do not rethrow, just fail silently to prevent app crash
+      }
     } catch (e) {
-      debugPrint('Error playing sound $assetPath: $e');
+      debugPrint('Error accessing audio pool $assetPath: $e');
     }
   }
 
