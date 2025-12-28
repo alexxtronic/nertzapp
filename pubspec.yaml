@@ -61,15 +61,16 @@ flutter:
   
   # Assets for app logo and images
   assets:
-    - assets/app_icon.jpg
+    - assets/app_icon.png
     - assets/trophies/
     - assets/nertz_button.png
     - assets/card_back.png
+    - assets/default_avatar.jpg
 
 # App icon configuration
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/app_icon.jpg"
+  image_path: "assets/app_icon.png"
   min_sdk_android: 21
   remove_alpha_ios: true

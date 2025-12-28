@@ -49,6 +49,8 @@ class GameEngine {
         return _executeToCenter(move, player, gameState);
       case MoveType.moveStack:
         return _executeMoveStack(move, player);
+      case MoveType.callNertz:
+        return _executeCallNertz(player);
     }
   }
 
@@ -105,9 +107,10 @@ class GameEngine {
     // Use the specific pile index the user targeted (no auto-find)
     gameState.playToCenterPile(card, move.targetPileIndex!);
 
-    if (player.hasEmptiedNertz) {
-      return ExecutionResult.success(roundEnded: true, winnerId: player.id);
-    }
+    // Removed automatic win trigger - User must press Nertz Button!
+    // if (player.hasEmptiedNertz) {
+    //   return ExecutionResult.success(roundEnded: true, winnerId: player.id);
+    // }
 
     return ExecutionResult.success();
   }
@@ -121,6 +124,13 @@ class GameEngine {
     targetPile.pushAll(cardsToMove);
 
     return ExecutionResult.success();
+  }
+
+  static ExecutionResult _executeCallNertz(PlayerState player) {
+    if (player.nertzPile.isEmpty) {
+      return ExecutionResult.success(roundEnded: true, winnerId: player.id);
+    }
+    return ExecutionResult.failure('Nertz pile not empty');
   }
 
   static void setupRound(GameState gameState) {

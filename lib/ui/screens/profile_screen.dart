@@ -287,10 +287,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                      padding: const EdgeInsets.all(4), 
                      child: CircleAvatar(
                         backgroundColor: GameTheme.primary,
-                        backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                        backgroundImage: avatarUrl != null 
+                            ? NetworkImage(avatarUrl) 
+                            : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                         child: _isUploading 
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : (avatarUrl == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null),
+                          : null,
                      ),
                    ),
                  ),

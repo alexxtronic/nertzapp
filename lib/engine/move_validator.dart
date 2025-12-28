@@ -13,6 +13,7 @@ enum MoveType {
   drawThree,
   moveStack,
   drawOne,
+  callNertz,
 }
 
 /// Represents a move request
@@ -98,7 +99,16 @@ class MoveValidator {
         return _validateToCenter(move, player, gameState);
       case MoveType.moveStack:
         return _validateMoveStack(move, player);
+      case MoveType.callNertz:
+        return _validateCallNertz(move, player);
     }
+  }
+
+  static MoveResult _validateCallNertz(Move move, PlayerState player) {
+    if (!player.nertzPile.isEmpty) {
+      return MoveResult.invalid(move, 'Nertz pile is not empty!');
+    }
+    return MoveResult.valid(move);
   }
 
   static MoveResult _validateDrawThree(Move move, PlayerState player) {

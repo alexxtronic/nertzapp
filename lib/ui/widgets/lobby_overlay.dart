@@ -215,10 +215,8 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
             backgroundColor: GameTheme.primary,
             backgroundImage: player.avatarUrl != null 
               ? NetworkImage(player.avatarUrl!) 
-              : null,
-            child: player.avatarUrl == null 
-              ? const Icon(Icons.person, size: 20, color: Colors.white) 
-              : null,
+              : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+            child: null,
           ),
           const SizedBox(width: 12),
           Text(player.displayName, style: GameTheme.body),

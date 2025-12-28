@@ -218,6 +218,11 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   // Track the number of cards to animate (set before draw, used during animation)
   int _cardsToAnimate = 0;
   
+  // Countdown State
+  int _countdownValue = 0;
+  bool _showCountdown = false;
+  Timer? _countdownTimer;
+
   GameState get gameState => widget.gameState;
   String get currentPlayerId => widget.currentPlayerId;
   Function(Move)? get onMove => widget.onMove;
@@ -227,13 +232,53 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   
   List<PlayerState> get opponents => gameState.players.values
       .where((p) => p.id != currentPlayerId)
+      .where((p) => p.id != currentPlayerId)
       .toList();
+      
+  @override
+  void didUpdateWidget(GameBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Detect transition to Playing phase to start countdown
+    if (oldWidget.gameState.phase != GamePhase.playing && 
+        widget.gameState.phase == GamePhase.playing) {
+      _startCountdown();
+    }
+  }
+  
+  void _startCountdown() {
+    setState(() {
+      _showCountdown = true;
+      _countdownValue = 3;
+    });
+    
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      setState(() {
+        if (_countdownValue > 1) {
+          _countdownValue--;
+        } else if (_countdownValue == 1) {
+           _countdownValue = 0; // Show "NERTZ!" or "GO!"
+        } else {
+           // Done
+           _showCountdown = false;
+           timer.cancel();
+        }
+      });
+    });
+  }
   
   @override
   void dispose() {
     for (final timer in _cardRevealTimers) {
       timer.cancel();
     }
+    _countdownTimer?.cancel();
     super.dispose();
   }
   
@@ -349,31 +394,36 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         gradient: GameTheme.backgroundGradient,
       ),
       child: SafeArea(
-        child: LayoutBuilder(
-            builder: (context, constraints) {
-            // Use CustomScrollView with SliverFillRemaining to allow Spacer() to work
-            // while still being scrollable on small screens.
-            return CustomScrollView(
-              physics: const ClampingScrollPhysics(),
-              slivers: [
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Column(
-                    children: [
-                      _buildHeader(player),
-                      const SizedBox(height: 12), // Fixed small gap
-                      _buildCenterArea(),
-                      const SizedBox(height: 8), // Reduced to shift work piles up
-                      _buildWorkPiles(context, player),
-                      const SizedBox(height: 24), // Space between Work and Hand
-                      _buildPlayerHand(player),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
+        child: Stack( // Changed to Stack for overlay
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Use CustomScrollView with SliverFillRemaining to allow Spacer() to work
+                // while still being scrollable on small screens.
+                return CustomScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  slivers: [
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Column(
+                        children: [
+                          _buildHeader(player),
+                          const SizedBox(height: 12), // Fixed small gap
+                          _buildCenterArea(),
+                          const SizedBox(height: 8), // Reduced to shift work piles up
+                          _buildWorkPiles(context, player),
+                          const SizedBox(height: 24), // Space between Work and Hand
+                          _buildPlayerHand(player),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            if (_showCountdown) _buildCountdownOverlay(),
+          ],
         ),
       ),
     );
@@ -475,14 +525,10 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                       child: CircleAvatar(
                         radius: 16,
                         backgroundColor: Colors.white,
-                        child: Text(
-                          opp.displayName[0],
-                          style: const TextStyle(
-                            color: GameTheme.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
+                        backgroundImage: opp.avatarUrl != null && opp.avatarUrl!.isNotEmpty 
+                            ? NetworkImage(opp.avatarUrl!)
+                            : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                        child: null, // No text child needed with image
                       ),
                     ),
                   );
@@ -651,7 +697,30 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           Column(
             children: [
               player.nertzPile.isEmpty
-                ? const GhostSlot(label: "WIN")
+                ? GestureDetector(
+                    onTap: () {
+                      HapticFeedback.heavyImpact(); // Strong haptics
+                      onMove?.call(Move(
+                        type: MoveType.callNertz, 
+                        playerId: currentPlayerId
+                      ));
+                    },
+                    child: Container(
+                      width: GameTheme.cardWidth,
+                      height: GameTheme.cardHeight,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: GameTheme.primary.withValues(alpha: 0.5),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          )
+                        ]
+                      ),
+                      child: Image.asset('assets/nertz_button.png'),
+                    ),
+                  )
                 : Stack(
                     clipBehavior: Clip.none,
                     children: [
@@ -1134,6 +1203,43 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                   : GlassCard(card: visibleCards[i]),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCountdownOverlay() {
+    String text;
+    if (_countdownValue > 0) {
+      text = _countdownValue.toString();
+    } else {
+      text = "NERTZ!";
+    }
+    
+    return Container(
+      color: Colors.black.withValues(alpha: 0.7),
+      child: Center(
+        child: TweenAnimationBuilder<double>(
+          key: ValueKey(_countdownValue),
+          tween: Tween(begin: 0.5, end: 1.0),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.elasticOut,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: value,
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 80,
+                  fontWeight: FontWeight.w900,
+                  shadows: [
+                    Shadow(color: GameTheme.primary, blurRadius: 20),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
