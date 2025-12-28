@@ -570,38 +570,64 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           ),
           
           // Center: Points Pill
-          Align(
-            alignment: Alignment.center,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: GameTheme.pillGradient,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: GameTheme.primary.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
+            Align(
+              alignment: Alignment.center,
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${gameState.countPlayerCardsInCenter(currentPlayerId)} pts',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: GameTheme.pillGradient,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: GameTheme.primary.withValues(alpha: 0.4),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${gameState.countPlayerCardsInCenter(currentPlayerId)} pts',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  if (gameState.phase == GamePhase.playing && gameState.roundStartTime != null)
+                    StreamBuilder(
+                      stream: Stream.periodic(const Duration(seconds: 1)),
+                      builder: (context, snapshot) {
+                        final diff = DateTime.now().difference(gameState.roundStartTime!);
+                        // Subtract 4 seconds for countdown
+                        final playSeconds = (diff.inSeconds - 4).clamp(0, 3600);
+                        final m = (playSeconds ~/ 60).toString().padLeft(2, '0');
+                        final s = (playSeconds % 60).toString().padLeft(2, '0');
+                        return Text(
+                          "$m:$s",
+                          style: TextStyle(
+                            color: GameTheme.textPrimary.withValues(alpha: 0.5),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1,
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
-          ),
           
           // Right: Opponents (Overlapping Avatars)
           Align(
