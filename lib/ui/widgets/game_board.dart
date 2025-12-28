@@ -674,7 +674,24 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                   );
                 }),
                 // Add a little padding at the end so the last one isn't clipped by the screen edge visually if margin is used
-                if (opponents.isNotEmpty) const SizedBox(width: 8),
+                if (opponents.isNotEmpty) const SizedBox(width: 4),
+                
+                // Gear icon positioned below player bubbles
+                Container(
+                  margin: const EdgeInsets.only(left: 4),
+                  decoration: BoxDecoration(
+                    color: GameTheme.background.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 20),
+                    onPressed: () {
+                      showSettingsDialog(context);
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+                ),
               ],
             ),
           ),
