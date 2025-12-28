@@ -103,7 +103,7 @@ class GameClient {
     }
     
     final json = message.toJson();
-    json['type'] = message.type.index;
+    json['msgType'] = message.type.index;
     _channel!.sink.add(jsonEncode(json));
   }
   

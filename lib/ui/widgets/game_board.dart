@@ -714,13 +714,51 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               ),
                   const SizedBox(width: 12),
               // Stock (Far Right)
-              Column(
+                Column(
                 children: [
                   GestureDetector(
-                    onTap: player.stockPile.isEmpty ? null : _drawFromStock,
+                    // Tap handles both Drawing (if cards exist) and Resetting (if empty & can reset)
+                    onTap: () {
+                      if (!player.stockPile.isEmpty) {
+                        _drawFromStock();
+                      } else if (!player.wastePile.isEmpty) {
+                        _resetStock();
+                      }
+                    },
                     behavior: HitTestBehavior.opaque,
                     child: player.stockPile.isEmpty
-                      ? const GhostSlot(label: "")
+                      ? (player.wastePile.isEmpty 
+                          // Completely Empty: Ghost Slot
+                          ? const GhostSlot(label: "")
+                          // Empty Stock but Waste has cards: RESET CARD
+                          : Container(
+                              width: GameTheme.cardWidth * 1.1,
+                              height: GameTheme.cardHeight * 1.1,
+                              decoration: BoxDecoration(
+                                color: GameTheme.primary,
+                                borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: GameTheme.primary.withValues(alpha: 0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ],
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  "RESET",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                              ),
+                            ))
+                      // Normal Stock Pile functionality
                       : Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -739,7 +777,6 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                                   height: GameTheme.cardHeight * 1.1,
                                   fit: BoxFit.fill,
                                   errorBuilder: (context, error, stackTrace) {
-                                    // Fallback if image doesn't load
                                     return Container(
                                       decoration: BoxDecoration(
                                         gradient: GameTheme.primaryGradient,
@@ -787,23 +824,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                           ],
                         ),
                   ),
-                  // Reset Deck button (only when stock is empty and waste has cards)
-                  if (player.stockPile.isEmpty && !player.wastePile.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: ElevatedButton(
-                        onPressed: _resetStock,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: GameTheme.primary,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text('RESET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 8),
+                  
+                  const SizedBox(height: 8),
                   const Text("STOCK", style: TextStyle(
                     color: GameTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold
                   )),

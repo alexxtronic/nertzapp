@@ -66,8 +66,8 @@ class GameState {
     if (phase != GamePhase.lobby) {
       throw StateError('Cannot add players during active game');
     }
-    if (players.length >= 6) {
-      throw StateError('Maximum 6 players allowed');
+    if (players.length >= maxPlayers) {
+      throw StateError('Maximum $maxPlayers players allowed');
     }
 
     players[playerId] = PlayerState(

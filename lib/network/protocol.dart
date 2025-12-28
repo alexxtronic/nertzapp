@@ -5,6 +5,7 @@ library;
 import '../models/game_state.dart';
 import '../engine/move_validator.dart';
 import '../engine/scoring.dart';
+import 'dart:convert'; // For jsonEncode
 
 /// Message types for the game protocol
 enum MessageType {
@@ -37,7 +38,7 @@ abstract class GameMessage {
   String encode() {
     final json = toJson();
     json['msgType'] = type.index;  // Use 'msgType' to avoid Supabase 'type' collision
-    return json.toString();
+    return jsonEncode(json);
   }
   
   static GameMessage? decode(Map<String, dynamic> json) {

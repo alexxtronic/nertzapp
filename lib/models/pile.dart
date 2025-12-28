@@ -9,6 +9,7 @@ abstract class Pile {
   List<PlayingCard> get cards;
   
   bool get isEmpty => cards.isEmpty;
+  bool get isNotEmpty => cards.isNotEmpty;
   int get length => cards.length;
   
   PlayingCard? get topCard => cards.isEmpty ? null : cards.last;
