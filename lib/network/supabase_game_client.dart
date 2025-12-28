@@ -117,10 +117,16 @@ class SupabaseGameClient {
   }
   
   void send(GameMessage message) {
-    if (_channel == null) return;
+    if (_channel == null) {
+      debugPrint('📤 SEND FAILED: Channel is null!');
+      return;
+    }
     
     final json = message.toJson();
     json['type'] = message.type.index; // Ensure enum index is sent
+    
+    debugPrint('📤 SENDING: ${message.runtimeType} (type: ${message.type.index})');
+    debugPrint('📤 Payload: $json');
     
     _channel!.sendBroadcastMessage(
       event: 'game_message',
