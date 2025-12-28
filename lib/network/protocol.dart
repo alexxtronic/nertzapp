@@ -41,46 +41,69 @@ abstract class GameMessage {
   }
   
   static GameMessage? decode(Map<String, dynamic> json) {
-    final typeIndex = json['type'] as int;
-    final type = MessageType.values[typeIndex];
-    
-    switch (type) {
-      case MessageType.joinMatch:
-        return JoinMatchMessage.fromJson(json);
-      case MessageType.leaveMatch:
-        return LeaveMatchMessage.fromJson(json);
-      case MessageType.setReady:
-        return SetReadyMessage.fromJson(json);
-      case MessageType.startGame:
-        return StartGameMessage.fromJson(json);
-      case MessageType.moveIntent:
-        return MoveIntentMessage.fromJson(json);
-      case MessageType.error:
-        return ErrorMessage.fromJson(json);
-      case MessageType.playerJoined:
-        return PlayerJoinedMessage.fromJson(json);
-      case MessageType.playerLeft:
-        return PlayerLeftMessage.fromJson(json);
-      case MessageType.playerReady:
-        return PlayerReadyMessage.fromJson(json);
-      case MessageType.gameStart:
-        return GameStartMessage.fromJson(json);
-      case MessageType.moveAccepted:
-        return MoveAcceptedMessage.fromJson(json);
-      case MessageType.moveRejected:
-        return MoveRejectedMessage.fromJson(json);
-      case MessageType.stateSnapshot:
-        return StateSnapshotMessage.fromJson(json);
-      case MessageType.roundEnd:
-        return RoundEndMessage.fromJson(json);
-      case MessageType.matchEnd:
-        return MatchEndMessage.fromJson(json);
-      case MessageType.ping:
-        return PingMessage();
-      case MessageType.pong:
-        return PongMessage();
-      case MessageType.requestState:
-        return RequestStateMessage.fromJson(json);
+    try {
+      // Handle 'type' as either int or String
+      final rawType = json['type'];
+      int typeIndex;
+      if (rawType is int) {
+        typeIndex = rawType;
+      } else if (rawType is String) {
+        typeIndex = int.tryParse(rawType) ?? -1;
+      } else {
+        print('⚠️ GameMessage.decode: Invalid type field: $rawType');
+        return null;
+      }
+      
+      if (typeIndex < 0 || typeIndex >= MessageType.values.length) {
+        print('⚠️ GameMessage.decode: Type index out of bounds: $typeIndex');
+        return null;
+      }
+      
+      final type = MessageType.values[typeIndex];
+      
+      switch (type) {
+        case MessageType.joinMatch:
+          return JoinMatchMessage.fromJson(json);
+        case MessageType.leaveMatch:
+          return LeaveMatchMessage.fromJson(json);
+        case MessageType.setReady:
+          return SetReadyMessage.fromJson(json);
+        case MessageType.startGame:
+          return StartGameMessage.fromJson(json);
+        case MessageType.moveIntent:
+          return MoveIntentMessage.fromJson(json);
+        case MessageType.error:
+          return ErrorMessage.fromJson(json);
+        case MessageType.playerJoined:
+          return PlayerJoinedMessage.fromJson(json);
+        case MessageType.playerLeft:
+          return PlayerLeftMessage.fromJson(json);
+        case MessageType.playerReady:
+          return PlayerReadyMessage.fromJson(json);
+        case MessageType.gameStart:
+          return GameStartMessage.fromJson(json);
+        case MessageType.moveAccepted:
+          return MoveAcceptedMessage.fromJson(json);
+        case MessageType.moveRejected:
+          return MoveRejectedMessage.fromJson(json);
+        case MessageType.stateSnapshot:
+          return StateSnapshotMessage.fromJson(json);
+        case MessageType.roundEnd:
+          return RoundEndMessage.fromJson(json);
+        case MessageType.matchEnd:
+          return MatchEndMessage.fromJson(json);
+        case MessageType.ping:
+          return PingMessage();
+        case MessageType.pong:
+          return PongMessage();
+        case MessageType.requestState:
+          return RequestStateMessage.fromJson(json);
+      }
+    } catch (e, stack) {
+      print('⚠️ GameMessage.decode error: $e');
+      print('⚠️ Stack: $stack');
+      print('⚠️ JSON was: $json');
+      return null;
     }
   }
 }
