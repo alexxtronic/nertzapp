@@ -71,13 +71,12 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   void _startBotLoop() {
     _botTimer?.cancel();
     debugPrint('🤖 Starting bot loop...');
-    _botTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
+    // 400ms interval = 60% faster than 800ms
+    _botTimer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
       if (state == null || state!.phase != GamePhase.playing) {
-        if (state != null) debugPrint('🤖 Bot loop skipped: phase is ${state!.phase}');
         return;
       }
       
-      // Select a random bot to act this tick to avoid synchronized robotic behavior
       final bots = state!.players.values.where((p) => p.isBot).toList();
       if (bots.isEmpty) return;
       
@@ -85,13 +84,10 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         // 1. Try to find a move
         final move = BotLogic.findBestMove(state!, bot.id);
         if (move != null) {
-          debugPrint('🤖 Bot ${bot.displayName} executing move: ${move.type}');
           executeMove(move);
         } else {
-          // 2. If no move, draw cards (guaranteed every ~3 seconds per bot)
-          // Using a simple counter or random is better than DateTime.now().second
-          if (DateTime.now().millisecondsSinceEpoch % 4 == 0) {
-             debugPrint('🤖 Bot ${bot.displayName} drawing cards...');
+          // 2. If no move, draw cards more frequently (every other tick)
+          if (DateTime.now().millisecondsSinceEpoch % 2 == 0) {
              drawThree(bot.id);
           }
         }

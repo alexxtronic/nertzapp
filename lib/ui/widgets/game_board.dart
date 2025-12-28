@@ -226,44 +226,44 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     super.dispose();
   }
   
-  /// Draw 3 cards one at a time with 250ms delay between each
-  Future<void> _drawThreeSequentially() async {
+  /// Draw up to 3 cards from stock to waste
+  void _drawFromStock() {
     if (_isDrawing) return;
     _isDrawing = true;
 
-    // Loop up to 3 times
-    for (int i = 0; i < 3; i++) {
-      final freshPlayer = currentPlayer;
-      if (freshPlayer == null) break;
-
-      // Case 1: Stock is empty at the START of a tap (i=0) -> Trigger Refill
-      if (i == 0 && freshPlayer.stockPile.isEmpty) {
-        onMove?.call(Move(
-          type: MoveType.drawOne,
-          playerId: currentPlayerId,
-        ));
-        break; // Refill is a single action
-      }
-
-      // Case 2: Stock became empty DURING the loop (i>0) -> Stop drawing
-      // We do NOT want to auto-refill here. User must tap again to refill.
-      if (freshPlayer.stockPile.isEmpty) {
-        break; 
-      }
-
-      // Case 3: Stock has cards -> Draw one
-      onMove?.call(Move(
-        type: MoveType.drawOne,
-        playerId: currentPlayerId,
-      ));
-      
-      // Wait before next card (unless it was the last one)
-      if (i < 2) {
-        await Future.delayed(const Duration(milliseconds: 250));
-      }
+    final player = currentPlayer;
+    if (player == null) {
+      _isDrawing = false;
+      return;
     }
+
+    // If stock is empty, do nothing (Reset button handles this)
+    if (player.stockPile.isEmpty) {
+      _isDrawing = false;
+      return;
+    }
+
+    // Draw three (the model handles drawing up to 3 or fewer)
+    onMove?.call(Move(
+      type: MoveType.drawThree,
+      playerId: currentPlayerId,
+    ));
     
     _isDrawing = false;
+  }
+
+  /// Reset the stock pile from waste
+  void _resetStock() {
+    final player = currentPlayer;
+    if (player == null) return;
+    if (!player.stockPile.isEmpty) return; // Only reset if empty
+    if (player.wastePile.isEmpty) return;  // Nothing to reset
+
+    // drawThree when stock is empty will trigger refill in PlayerState
+    onMove?.call(Move(
+      type: MoveType.drawThree,
+      playerId: currentPlayerId,
+    ));
   }
 
   @override
@@ -643,10 +643,10 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               Column(
                 children: [
                   GestureDetector(
-                    onTap: _drawThreeSequentially,
+                    onTap: player.stockPile.isEmpty ? null : _drawFromStock,
                     behavior: HitTestBehavior.opaque,
                     child: player.stockPile.isEmpty
-                      ? const GhostSlot(label: "↺")
+                      ? const GhostSlot(label: "")
                       : Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -713,7 +713,23 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                           ],
                         ),
                   ),
-                  const SizedBox(height: 8),
+                  // Reset Deck button (only when stock is empty and waste has cards)
+                  if (player.stockPile.isEmpty && !player.wastePile.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: ElevatedButton(
+                        onPressed: _resetStock,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: GameTheme.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('RESET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 8),
                   const Text("STOCK", style: TextStyle(
                     color: GameTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold
                   )),

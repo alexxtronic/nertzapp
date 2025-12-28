@@ -73,7 +73,7 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
                             SelectableText(
                               widget.matchId,
                               style: GameTheme.h1.copyWith(
-                                color: GameTheme.accent,
+                                color: Colors.black,
                                 letterSpacing: 8,
                               ),
                             ),
