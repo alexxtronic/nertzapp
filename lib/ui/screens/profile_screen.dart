@@ -178,6 +178,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
+              
+
             );
           },
         );
@@ -370,6 +372,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : "${nextLevelXp - xp} XP to reach ${rank == 'Bronze' ? 'Silver' : (rank == 'Silver' ? 'Gold' : 'Platinum')}",
                       style: const TextStyle(fontSize: 12, color: GameTheme.textSecondary),
                    ),
+                   
+                   const SizedBox(height: 24),
+             
+                   // Rank Display - Glowing Circle
+                   Center(
+                     child: Column(
+                       children: [
+                          Text(
+                            rank.toUpperCase(), 
+                            style: const TextStyle(
+                              fontSize: 24, 
+                              fontWeight: FontWeight.w900, 
+                              letterSpacing: 1.2,
+                              color: GameTheme.textPrimary
+                            )
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: ringColor.withOpacity(0.6),
+                                  blurRadius: 30,
+                                  spreadRadius: 2,
+                                ),
+                                BoxShadow(
+                                  color: ringColor.withOpacity(0.3),
+                                  blurRadius: 60,
+                                  spreadRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: Image.asset(trophyAsset, width: 80, height: 80),
+                          ),
+                       ],
+                     ),
+                   ),
                  ],
                ),
              ),
@@ -388,13 +430,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                crossAxisSpacing: 16,
                childAspectRatio: 1.1,
                children: [
-                 _buildStatCard(
-                   title: "Total Wins",
-                   value: "$wins",
-                   icon: null,
-                   imageAsset: trophyAsset,
-                   color: ringColor.withValues(alpha: 0.1),
-                 ),
+                  _buildStatCard(
+                    title: "Total Wins",
+                    value: "$wins",
+                    emoji: "#",
+                    color: Colors.blue.shade50,
+                  ),
                  _buildStatCard(
                    title: "Win Streak",
                    value: "${wins > 0 ? 1 : 0}", 
@@ -429,6 +470,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String value,
     IconData? icon,
     String? imageAsset,
+    String? emoji,
     required Color color,
     Color iconColor = GameTheme.primary,
   }) {
@@ -449,9 +491,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: color,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: imageAsset != null 
-              ? Image.asset(imageAsset, width: 24, height: 24, errorBuilder: (_,__,___) => const Icon(Icons.emoji_events, color: Colors.amber))
-              : Icon(icon, color: iconColor, size: 24),
+            child: emoji != null
+                ? Text(emoji, style: const TextStyle(fontSize: 24))
+                : (imageAsset != null 
+                  ? Image.asset(imageAsset, width: 24, height: 24, errorBuilder: (_,__,___) => const Icon(Icons.emoji_events, color: Colors.amber))
+                  : Icon(icon, color: iconColor, size: 24)),
           ),
           
           Column(
