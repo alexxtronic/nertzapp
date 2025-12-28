@@ -72,8 +72,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   void _startBotLoop() {
     _botTimer?.cancel();
     debugPrint('🤖 Starting bot loop...');
-    // 1000ms interval = Significantly slower per user request
-    _botTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+    // 1500ms interval = Even slower per user request
+    _botTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
       if (state == null || state!.phase != GamePhase.playing) {
         return;
       }
