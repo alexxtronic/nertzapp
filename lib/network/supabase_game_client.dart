@@ -62,9 +62,13 @@ class SupabaseGameClient {
     
     _channel!
       .onBroadcast(event: 'game_message', callback: (payload) {
-        // Unwrap nested payload if present
+        debugPrint('📡 RAW PAYLOAD: $payload');
+        debugPrint('📡 Payload keys: ${payload.keys.toList()}');
+        
+        // Supabase may wrap the payload - check for nested 'payload' key
         Map<String, dynamic> actualPayload = payload;
         if (payload.containsKey('payload') && payload['payload'] is Map) {
+          debugPrint('📡 Unwrapping nested payload...');
           actualPayload = Map<String, dynamic>.from(payload['payload']);
         }
         
