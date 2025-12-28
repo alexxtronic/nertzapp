@@ -44,7 +44,13 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
   Future<void> _refreshProfile() async {
     final p = await _authService.getProfile();
-    if (mounted) setState(() => _profile = p);
+    if (mounted) {
+      setState(() => _profile = p);
+      // Update the player name provider with the actual profile username
+      if (p != null && p['username'] != null) {
+        ref.read(playerNameProvider.notifier).state = p['username'] as String;
+      }
+    }
   }
 
   @override

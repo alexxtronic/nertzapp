@@ -175,6 +175,13 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         debugPrint('📨 Responding with StateSnapshotMessage...');
         client.send(StateSnapshotMessage(gameState: state!));
       }
+    } else if (message is StartGameMessage) {
+      debugPrint('📨 StartGameMessage received! Starting round...');
+      // If we're not the host, we need to start the round when host broadcasts start
+      if (state != null && state!.phase == GamePhase.lobby) {
+        state!.startRound();
+        state = GameState.fromJson(state!.toJson()); // Trigger rebuild
+      }
     }
   }
   
