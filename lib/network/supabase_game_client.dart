@@ -62,13 +62,9 @@ class SupabaseGameClient {
     
     _channel!
       .onBroadcast(event: 'game_message', callback: (payload) {
-        debugPrint('📡 RAW PAYLOAD: $payload');
-        debugPrint('📡 Payload keys: ${payload.keys.toList()}');
-        
-        // Supabase may wrap the payload - check for nested 'payload' key
+        // Unwrap nested payload if present
         Map<String, dynamic> actualPayload = payload;
         if (payload.containsKey('payload') && payload['payload'] is Map) {
-          debugPrint('📡 Unwrapping nested payload...');
           actualPayload = Map<String, dynamic>.from(payload['payload']);
         }
         
@@ -125,16 +121,10 @@ class SupabaseGameClient {
   }
   
   void send(GameMessage message) {
-    if (_channel == null) {
-      debugPrint('📤 SEND FAILED: Channel is null!');
-      return;
-    }
+    if (_channel == null) return;
     
     final json = message.toJson();
-    json['msgType'] = message.type.index; // Use 'msgType' to avoid Supabase collision
-    
-    debugPrint('📤 SENDING: ${message.runtimeType} (msgType: ${message.type.index})');
-    debugPrint('📤 Payload: $json');
+    json['msgType'] = message.type.index;
     
     _channel!.sendBroadcastMessage(
       event: 'game_message',
@@ -150,12 +140,7 @@ class SupabaseGameClient {
     try {
       final message = GameMessage.decode(json);
       
-      if (message == null) {
-        debugPrint('📡 _handleMessage: Failed to decode message');
-        return;
-      }
-      
-      debugPrint('📡 _handleMessage decoded: ${message.runtimeType}');
+      if (message == null) return;
       
       // Since this is P2P broadcast, we need to handle "MoveIntent" from others manually 
       // by executing it on our local state (Authoritative Client Model for MVP).

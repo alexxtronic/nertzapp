@@ -211,10 +211,11 @@ class GameBoard extends StatefulWidget {
 class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   bool _isDrawing = false;
   
-  // Animation state for waste pile
-  int _visibleWasteCards = 3; // How many of the last drawn cards to show
-  int _previousWasteCount = 0; // Track waste pile count for animation
+  // Animation state for waste pile - track revealed card IDs
+  Set<String> _revealedCardIds = {};
   List<Timer> _cardRevealTimers = [];
+  // Track the number of cards to animate (set before draw, used during animation)
+  int _cardsToAnimate = 0;
   
   GameState get gameState => widget.gameState;
   String get currentPlayerId => widget.currentPlayerId;
@@ -260,25 +261,30 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     
     // Calculate how many cards will be drawn (up to 3, or remaining)
     final cardsToDraw = player.stockPile.length.clamp(1, 3);
+    _cardsToAnimate = cardsToDraw;
     
-    // Start with 0 visible cards
-    setState(() {
-      _visibleWasteCards = 0;
-      _previousWasteCount = player.wastePile.length;
-    });
-
-    // Execute the draw move first
+    // Capture the IDs of cards that will be drawn (they're at the top of the stock pile)
+    // Stock pile is LIFO, so the last N cards will be drawn
+    final stockCards = player.stockPile.cards;
+    final cardsBeingDrawn = stockCards.sublist(stockCards.length - cardsToDraw).reversed.toList();
+    final cardIdsBeingDrawn = cardsBeingDrawn.map((c) => c.id).toList();
+    
+    // Clear the revealed cards set - none are visible initially
+    _revealedCardIds = {};
+    
+    // Execute the draw move
     onMove?.call(Move(
       type: MoveType.drawThree,
       playerId: currentPlayerId,
     ));
     
     // Animate cards appearing one at a time at 0.25s intervals
-    for (int i = 0; i < cardsToDraw; i++) {
+    for (int i = 0; i < cardIdsBeingDrawn.length; i++) {
+      final cardId = cardIdsBeingDrawn[i];
       final timer = Timer(Duration(milliseconds: 250 * (i + 1)), () {
         if (mounted) {
           setState(() {
-            _visibleWasteCards = i + 1;
+            _revealedCardIds.add(cardId);
           });
         }
       });
@@ -286,8 +292,14 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
     
     // Allow next draw after animation completes
-    Timer(Duration(milliseconds: 250 * cardsToDraw + 50), () {
+    Timer(Duration(milliseconds: 250 * cardsToDraw + 100), () {
       _isDrawing = false;
+      // After animation completes, mark all cards as revealed
+      if (mounted) {
+        setState(() {
+          _cardsToAnimate = 0;
+        });
+      }
     });
   }
 
@@ -998,29 +1010,36 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         ? wasteCards.sublist(wasteCards.length - 3) 
         : wasteCards.toList();
     
-    // Calculate how many cards are "new" (from the current draw)
-    final newCardsCount = wasteCards.length - _previousWasteCount;
-    final animatingCount = newCardsCount.clamp(0, 3);
+    // Determine which cards to display:
+    // If we're in animation mode (_cardsToAnimate > 0), only show cards that are:
+    // 1. Already revealed (in _revealedCardIds), OR
+    // 2. Not part of this draw (they were already in the waste pile before)
+    List<PlayingCard> visibleCards;
     
-    // Determine which cards to show based on animation state
-    int cardsVisible;
-    if (animatingCount > 0 && _visibleWasteCards < animatingCount) {
-      // Still animating - show old cards plus newly revealed cards
-      final oldCardsToShow = (cardsToShow.length - animatingCount).clamp(0, cardsToShow.length);
-      cardsVisible = oldCardsToShow + _visibleWasteCards;
+    if (_cardsToAnimate > 0) {
+      // Get the newly drawn cards (last N cards where N = _cardsToAnimate)
+      final newlyDrawnStart = wasteCards.length - _cardsToAnimate;
+      visibleCards = [];
+      
+      for (int i = 0; i < cardsToShow.length; i++) {
+        final card = cardsToShow[i];
+        final cardIndexInWaste = wasteCards.indexOf(card);
+        
+        // Show the card if:
+        // 1. It was already in waste before draw (not a new card), OR
+        // 2. It's a new card that has been revealed
+        if (cardIndexInWaste < newlyDrawnStart || _revealedCardIds.contains(card.id)) {
+          visibleCards.add(card);
+        }
+      }
     } else {
-      // Not animating or animation complete - show all available
-      cardsVisible = cardsToShow.length;
+      // Not animating - show all cards
+      visibleCards = cardsToShow;
     }
     
-    // Clamp to available cards
-    cardsVisible = cardsVisible.clamp(0, cardsToShow.length);
-    
-    if (cardsVisible == 0) {
+    if (visibleCards.isEmpty) {
       return const GhostSlot();
     }
-    
-    final visibleCards = cardsToShow.sublist(cardsToShow.length - cardsVisible);
     
     return SizedBox(
       width: GameTheme.cardWidth + (visibleCards.length - 1) * 15,
