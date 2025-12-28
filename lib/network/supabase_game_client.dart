@@ -64,7 +64,15 @@ class SupabaseGameClient {
       .onBroadcast(event: 'game_message', callback: (payload) {
         debugPrint('📡 RAW PAYLOAD: $payload');
         debugPrint('📡 Payload keys: ${payload.keys.toList()}');
-        _handleMessage(payload);
+        
+        // Supabase may wrap the payload - check for nested 'payload' key
+        Map<String, dynamic> actualPayload = payload;
+        if (payload.containsKey('payload') && payload['payload'] is Map) {
+          debugPrint('📡 Unwrapping nested payload...');
+          actualPayload = Map<String, dynamic>.from(payload['payload']);
+        }
+        
+        _handleMessage(actualPayload);
       })
       .onPresenceSync((payload) {
         // Handle presence sync if we want to track online users via Presence

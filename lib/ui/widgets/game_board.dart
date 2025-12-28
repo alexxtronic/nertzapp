@@ -2,6 +2,7 @@
 
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
@@ -210,6 +211,11 @@ class GameBoard extends StatefulWidget {
 class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   bool _isDrawing = false;
   
+  // Animation state for waste pile
+  int _visibleWasteCards = 3; // How many of the last drawn cards to show
+  int _previousWasteCount = 0; // Track waste pile count for animation
+  List<Timer> _cardRevealTimers = [];
+  
   GameState get gameState => widget.gameState;
   String get currentPlayerId => widget.currentPlayerId;
   Function(Move)? get onMove => widget.onMove;
@@ -223,10 +229,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   
   @override
   void dispose() {
+    for (final timer in _cardRevealTimers) {
+      timer.cancel();
+    }
     super.dispose();
   }
   
-  /// Draw up to 3 cards from stock to waste
+  /// Draw up to 3 cards from stock to waste with staggered animation
   void _drawFromStock() {
     if (_isDrawing) return;
     _isDrawing = true;
@@ -243,13 +252,43 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       return;
     }
 
-    // Draw three (the model handles drawing up to 3 or fewer)
+    // Cancel any existing timers
+    for (final timer in _cardRevealTimers) {
+      timer.cancel();
+    }
+    _cardRevealTimers.clear();
+    
+    // Calculate how many cards will be drawn (up to 3, or remaining)
+    final cardsToDraw = player.stockPile.length.clamp(1, 3);
+    
+    // Start with 0 visible cards
+    setState(() {
+      _visibleWasteCards = 0;
+      _previousWasteCount = player.wastePile.length;
+    });
+
+    // Execute the draw move first
     onMove?.call(Move(
       type: MoveType.drawThree,
       playerId: currentPlayerId,
     ));
     
-    _isDrawing = false;
+    // Animate cards appearing one at a time at 0.25s intervals
+    for (int i = 0; i < cardsToDraw; i++) {
+      final timer = Timer(Duration(milliseconds: 250 * (i + 1)), () {
+        if (mounted) {
+          setState(() {
+            _visibleWasteCards = i + 1;
+          });
+        }
+      });
+      _cardRevealTimers.add(timer);
+    }
+    
+    // Allow next draw after animation completes
+    Timer(Duration(milliseconds: 250 * cardsToDraw + 50), () {
+      _isDrawing = false;
+    });
   }
 
   /// Reset the stock pile from waste
@@ -616,28 +655,12 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           // Waste + Stock (Right side: Waste left of Stock)
           Row(
             children: [
-              // Waste (left of Stock) - no label
+              // Waste (left of Stock) - shows up to 3 cards fanned with animation
               Column(
                 children: [
-                      player.wastePile.isEmpty
-                        ? const GhostSlot()
-                        : Draggable<PlayingCard>(
-                            data: player.wastePile.cards.last,
-                            feedback: Material(
-                              color: Colors.transparent,
-                              child: Transform.scale(
-                                scale: 1.1,
-                                child: GlassCard(card: player.wastePile.cards.last),
-                              ),
-                            ),
-                            childWhenDragging: Opacity(
-                              opacity: 0.3,
-                              child: GlassCard(card: player.wastePile.cards.last),
-                            ),
-                            child: GlassCard(card: player.wastePile.cards.last),
-                          ),
-                    ],
-                  ),
+                  _buildAnimatedWastePile(player),
+                ],
+              ),
                   const SizedBox(width: 12),
               // Stock (Far Right)
               Column(
@@ -961,5 +984,77 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       type: MoveType.drawThree,
       playerId: currentPlayerId,
     ));
+  }
+  
+  /// Build animated waste pile showing up to 3 cards with staggered reveal
+  Widget _buildAnimatedWastePile(PlayerState player) {
+    if (player.wastePile.isEmpty) {
+      return const GhostSlot();
+    }
+    
+    // Get the last 3 cards (or fewer if not enough)
+    final wasteCards = player.wastePile.cards;
+    final cardsToShow = wasteCards.length > 3 
+        ? wasteCards.sublist(wasteCards.length - 3) 
+        : wasteCards.toList();
+    
+    // Calculate how many cards are "new" (from the current draw)
+    final newCardsCount = wasteCards.length - _previousWasteCount;
+    final animatingCount = newCardsCount.clamp(0, 3);
+    
+    // Determine which cards to show based on animation state
+    int cardsVisible;
+    if (animatingCount > 0 && _visibleWasteCards < animatingCount) {
+      // Still animating - show old cards plus newly revealed cards
+      final oldCardsToShow = (cardsToShow.length - animatingCount).clamp(0, cardsToShow.length);
+      cardsVisible = oldCardsToShow + _visibleWasteCards;
+    } else {
+      // Not animating or animation complete - show all available
+      cardsVisible = cardsToShow.length;
+    }
+    
+    // Clamp to available cards
+    cardsVisible = cardsVisible.clamp(0, cardsToShow.length);
+    
+    if (cardsVisible == 0) {
+      return const GhostSlot();
+    }
+    
+    final visibleCards = cardsToShow.sublist(cardsToShow.length - cardsVisible);
+    
+    return SizedBox(
+      width: GameTheme.cardWidth + (visibleCards.length - 1) * 15,
+      height: GameTheme.cardHeight,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (int i = 0; i < visibleCards.length; i++)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              left: i * 15.0,
+              child: i == visibleCards.length - 1
+                  // Top card is draggable
+                  ? Draggable<PlayingCard>(
+                      data: visibleCards[i],
+                      feedback: Material(
+                        color: Colors.transparent,
+                        child: Transform.scale(
+                          scale: 1.1,
+                          child: GlassCard(card: visibleCards[i]),
+                        ),
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.3,
+                        child: GlassCard(card: visibleCards[i]),
+                      ),
+                      child: GlassCard(card: visibleCards[i]),
+                    )
+                  // Other cards are just visible
+                  : GlassCard(card: visibleCards[i]),
+            ),
+        ],
+      ),
+    );
   }
 }
