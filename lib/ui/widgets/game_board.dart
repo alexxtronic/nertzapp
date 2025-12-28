@@ -380,98 +380,118 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader(PlayerState player) {
-    return Padding(
+    return Container(
+      height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          // Title
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'NERTZ',
-                style: TextStyle(
-                  color: GameTheme.textPrimary.withValues(alpha: 0.4),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
-              ),
-              const Text(
-                'ROYALE',
-                style: TextStyle(
-                  color: GameTheme.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                ),
-              ),
-            ],
-          ),
-          
-          Expanded(child: Container()),
-          
-          // Glass Pill (Score & Timer)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: GameTheme.pillGradient,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: GameTheme.primary.withValues(alpha: 0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
+          // Left: Title
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 16),
-                const SizedBox(width: 8),
                 Text(
-                  '${gameState.countPlayerCardsInCenter(currentPlayerId)} pts',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  'NERTZ',
+                  style: TextStyle(
+                    color: GameTheme.textPrimary.withValues(alpha: 0.4),
                     fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const Text(
+                  'ROYALE',
+                  style: TextStyle(
+                    color: GameTheme.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1,
                   ),
                 ),
               ],
             ),
           ),
           
-          Expanded(child: Container()),
-
-          // Avatars (simplified)
-          ...opponents.take(3).map((opp) => Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Colors.white,
-                  child: Text(
-                    opp.displayName[0],
+          // Center: Points Pill
+          Align(
+            alignment: Alignment.center,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: GameTheme.pillGradient,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: GameTheme.primary.withValues(alpha: 0.4),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${gameState.countPlayerCardsInCenter(currentPlayerId)} pts',
                     style: const TextStyle(
-                      color: GameTheme.primary,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  opp.displayName,
-                  style: TextStyle(
-                    color: GameTheme.textSecondary,
-                    fontSize: 10,
-                  ),
-                ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Right: Opponents (Overlapping Avatars)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                ...opponents.take(3).map((opp) {
+                  return Align(
+                    widthFactor: 0.6, // Create overlap
+                    child: Container(
+                      decoration: BoxDecoration(
+                         shape: BoxShape.circle,
+                         border: Border.all(color: GameTheme.background, width: 2), // Space between avatars
+                         color: Colors.white,
+                         boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                              offset: const Offset(2, 2),
+                            )
+                         ]
+                      ),
+                      child: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Colors.white,
+                        child: Text(
+                          opp.displayName[0],
+                          style: const TextStyle(
+                            color: GameTheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                // Add a little padding at the end so the last one isn't clipped by the screen edge visually if margin is used
+                if (opponents.isNotEmpty) const SizedBox(width: 8), 
               ],
             ),
-          )),
+          ),
         ],
       ),
     );
@@ -599,12 +619,11 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               : Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isHighlighted 
-                ? GameTheme.success 
-                : Colors.white.withValues(alpha: 0.2),
-              width: isHighlighted ? 2 : 1,
+              color: Colors.black.withValues(alpha: 0.15),
+              width: 1.5,
             ),
           ),
+
           child: pile.isEmpty
             ? Center(
                 child: Text(

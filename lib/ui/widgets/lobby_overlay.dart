@@ -59,9 +59,9 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white10,
+                      color: const Color(0xFFF1F5F9), // Solid Slate 100
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: GameTheme.accent),
+                      border: Border.all(color: GameTheme.glassBorder),
                     ),
                     child: Column(
                       children: [
@@ -79,7 +79,7 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
                             ),
                             const SizedBox(width: 16),
                             IconButton(
-                              icon: const Icon(Icons.copy, color: Colors.white),
+                              icon: const Icon(Icons.copy, color: GameTheme.primary), // Changed to primary for visibility on light bg
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(text: widget.matchId));
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -99,9 +99,9 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white10,
+                      color: const Color(0xFFF1F5F9), // Solid Slate 100
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white24),
+                      border: Border.all(color: GameTheme.glassBorder),
                     ),
                     child: Column(
                       children: [
@@ -112,13 +112,13 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
                             Expanded(
                               child: TextField(
                                 controller: _inviteController,
-                                style: const TextStyle(color: Colors.white),
+                                style: const TextStyle(color: GameTheme.textPrimary),
                                 decoration: const InputDecoration(
                                   hintText: 'Enter Username',
-                                  hintStyle: TextStyle(color: Colors.white38),
+                                  hintStyle: TextStyle(color: GameTheme.textSecondary),
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: GameTheme.glassBorder)),
                                   focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: GameTheme.accent)),
                                 ),
                               ),
@@ -204,8 +204,9 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: const Color(0xFFF1F5F9), // Solid Slate 100
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: GameTheme.glassBorder),
       ),
       child: Row(
         children: [
@@ -227,7 +228,7 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: GameTheme.primary, // Solid primary for badge
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(

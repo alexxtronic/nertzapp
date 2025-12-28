@@ -8,6 +8,7 @@ import '../engine/game_engine.dart';
 import '../engine/move_validator.dart'; // For Move
 import 'protocol.dart';
 import 'game_client.dart'; // For enums/typedefs
+import '../services/supabase_service.dart'; // To access lobby stream
 
 class SupabaseGameClient {
   static final _uuid = const Uuid();
@@ -62,9 +63,6 @@ class SupabaseGameClient {
     
     _channel!
       .onBroadcast(event: 'game_message', callback: (payload) {
-        debugPrint('📡 RAW PAYLOAD: $payload');
-        debugPrint('📡 Payload keys: ${payload.keys.toList()}');
-        
         // Supabase may wrap the payload - check for nested 'payload' key
         Map<String, dynamic> actualPayload = payload;
         if (payload.containsKey('payload') && payload['payload'] is Map) {
@@ -96,6 +94,19 @@ class SupabaseGameClient {
            onConnectionChanged?.call(false);
         }
       });
+
+
+    // Also listen to the Lobby row for "Start Game" signal (Source of Truth)
+    SupabaseService().streamLobby(matchId).listen((lobbyData) {
+      if (lobbyData['status'] == 'playing') {
+        debugPrint('📡 DB says Game Started! Synthesizing StartGameMessage...');
+        
+        // Check if we are already playing to avoid loops
+        if (_localState != null && _localState!.phase != GamePhase.playing) {
+           onMessage?.call(StartGameMessage(matchId: matchId, hostId: 'server'));
+        }
+      }
+    });
   }
   
   void leaveMatch(String matchId) {
@@ -110,7 +121,10 @@ class SupabaseGameClient {
   }
   
   void startGame(String matchId) {
-    send(StartGameMessage(matchId: matchId, hostId: playerId));
+    // OLD: send(StartGameMessage(matchId: matchId, hostId: playerId));
+    // NEW: Update Database (Server Authoritative)
+    debugPrint('📡 Host starting game via Database update...');
+    SupabaseService().updateLobbyStatus(matchId, 'playing');
   }
   
   void sendMove(Move move, {bool optimistic = true}) {
@@ -142,7 +156,6 @@ class SupabaseGameClient {
       final message = GameMessage.decode(json);
       
       if (message != null) {
-        debugPrint('📡 _handleMessage passing to notifier: ${message.runtimeType}');
         onMessage?.call(message);
       }
     } catch (e) {

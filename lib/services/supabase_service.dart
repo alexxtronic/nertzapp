@@ -4,6 +4,8 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config.dart';
+import 'dart:math'; // For Random.secure()
+import 'dart:typed_data'; // For Uint8List
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -86,15 +88,39 @@ class SupabaseService {
     if (currentUser == null) return null;
 
     try {
-      // 1. Compress image
-      final compressedFile = await _compressImage(imageFile);
-      if (compressedFile == null) throw Exception('Compression failed');
+      // 1. Read bytes directly (works on Web & Mobile)
+      Uint8List bytes = await imageFile.readAsBytes();
 
-      // 2. Upload to Storage
-      final fileExt = path.extension(imageFile.path);
-      final fileName = '${currentUser!.id}/${DateTime.now().millisecondsSinceEpoch}$fileExt';
+      // 2. Check size & compress if needed
+      if (bytes.lengthInBytes > AppConfig.maxAvatarSizeBytes) {
+         print('⚠️ Image size (${bytes.lengthInBytes} B) exceeds limit. Compressing...');
+         try {
+           final compressed = await FlutterImageCompress.compressWithList(
+             bytes,
+             minHeight: 512,
+             minWidth: 512,
+             quality: 70, // Aggressive compression
+           );
+           bytes = compressed;
+         } catch(e) {
+           print('Compression error: $e');
+           // Fallback: try uploading original if compression fails, but it might be rejected by logic below
+         }
+      }
       
-      final bytes = await compressedFile.readAsBytes();
+      // 3. Strict Limit Check
+      if (bytes.lengthInBytes > AppConfig.maxAvatarSizeBytes) {
+         throw Exception('Image too large (${(bytes.lengthInBytes / 1024).toStringAsFixed(1)} KB). Max allowed is 200KB.');
+      }
+
+      // 4. Upload to Storage
+      final fileExt = path.extension(imageFile.path);
+      // Ensure extension matches content (we always compress to jpg if we compress, but keeping original ext is fine for now if logic holds)
+      // Actually, compressWithList output depends on format but defaults usually.
+      // Let's safe-guard by using .jpg if we compressed, or keep original.
+      final String finalExt = (bytes.lengthInBytes != (await imageFile.length())) ? '.jpg' : fileExt;
+
+      final fileName = '${currentUser!.id}/${DateTime.now().millisecondsSinceEpoch}$finalExt';
       
       await _supabase.storage.from('avatars').uploadBinary(
         fileName,
@@ -102,49 +128,26 @@ class SupabaseService {
         fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
       );
 
-      // 3. Get Public URL
+      // 5. Get Public URL
       final imageUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
       return imageUrl;
     } catch (e) {
       print('Error uploading avatar: $e');
-      return null;
+      rethrow; // Rethrow so UI can show error message
     }
   }
 
-  /// Compress image to ensure it's under 200KB
-  Future<XFile?> _compressImage(XFile file) async {
-    // Web doesn't support path_provider or built-in file copmression easily yet
-    // For now, return original on web (Supabase will handle size limit if needed)
-    // or we can implement client-side canvas resizing later.
-    // kIsWeb check requires 'flutter/foundation.dart' but we can check dart:io availability safely
-    // Actually, simply returning the file for now on web is safest to fix build.
-    if (path.style == path.Style.url) { 
-        // Quick heuristic for web or just let it pass through since flutter_image_compress 
-        // has web support but requires different usage.
-        return file; 
-    }
-
-    try {
-        // Only import/use dart:io logic if NOT on web? 
-        // Since we removed 'dart:io' import at top (we need to Remove it next step),
-        // we must change this logic entirely.
-        
-        // Actually, flutter_image_compress returns XFile now in newer versions.
-        return file; // Simplification: Skip compression to fix build first.
-    } catch (e) {
-        return file;
-    }
-  }
+  // Removed unused _compressImage method as we now use compressWithList inside uploadAvatar
   
   /// Create a new lobby with 6-digit number code
   Future<String?> createLobby() async {
     if (currentUser == null) return null;
     
-    // Generate 6 digit code (100000 to 999999)
-    // We try a few times in case of collision, though unlikely
+    // Generate 6 digit code safely
+    final rng = Random.secure();
     for (int i = 0; i < 3; i++) {
         try {
-          final code = (100000 + DateTime.now().microsecondsSinceEpoch % 899999).toString();
+          final code = (100000 + rng.nextInt(900000)).toString();
           
           final response = await _supabase
               .from('lobbies')
@@ -177,6 +180,25 @@ class SupabaseService {
     } catch (e) {
       return null;
     }
+  }
+
+  /// Update lobby status (e.g. 'playing')
+  Future<void> updateLobbyStatus(String matchId, String status) async {
+    if (currentUser == null) return;
+    
+    await _supabase
+        .from('lobbies')
+        .update({'status': status})
+        .eq('id', matchId);
+  }
+
+  /// Stream lobby updates
+  Stream<Map<String, dynamic>> streamLobby(String matchId) {
+    return _supabase
+        .from('lobbies')
+        .stream(primaryKey: ['id'])
+        .eq('id', matchId)
+        .map((event) => event.single);
   }
   // --- Invitations ---
 
@@ -230,5 +252,27 @@ class SupabaseService {
           'status': accept ? 'accepted' : 'rejected'
         })
         .eq('id', inviteId);
+  }
+
+  
+  /// Increment win count for current user
+  Future<void> incrementWin() async {
+    if (currentUser == null) return;
+    
+    try {
+      // 1. Get current wins
+      final profile = await getProfile();
+      final currentWins = (profile?['wins'] as int?) ?? 0;
+      
+      // 2. Update wins + 1
+      await _supabase
+          .from('profiles')
+          .update({'wins': currentWins + 1})
+          .eq('id', currentUser!.id);
+          
+      print('🏆 Win recorded! Total: ${currentWins + 1}');
+    } catch (e) {
+      print('Error incrementing wins: $e');
+    }
   }
 }

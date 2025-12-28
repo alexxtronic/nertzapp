@@ -62,6 +62,7 @@ flutter:
   # Assets for app logo and images
   assets:
     - assets/app_icon.jpg
+    - assets/trophies/
     - assets/nertz_button.png
     - assets/card_back.png
 

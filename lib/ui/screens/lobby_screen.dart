@@ -32,13 +32,11 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
   
   Future<void> _initAuth() async {
+    // AuthGate handles login now. Just refresh profile data.
     try {
-      if (_authService.currentUser == null) {
-        await _authService.signInAnonymously();
-      }
       _refreshProfile();
     } catch (e) {
-      debugPrint('Auth init failed: $e');
+      debugPrint('Profile load failed: $e');
     }
   }
 
@@ -162,209 +160,216 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   Widget build(BuildContext context) {
     final avatarUrl = _profile?['avatar_url'] as String?;
     final username = _profile?['username'] ?? 'Player';
+    final wins = _profile?['wins'] ?? 0;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: GameTheme.backgroundGradient,
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // Profile & Invites Button (Top Right)
-              Positioned(
-                top: 16,
-                right: 16,
-                child: StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: SupabaseService().getInvitesStream(),
-                  builder: (context, snapshot) {
-                      final inviteCount = snapshot.data?.length ?? 0;
-                      
-                      return GestureDetector(
-                        onTap: () async {
-                           if (inviteCount > 0) {
-                              // Prioritize showing invites if any
-                              await showDialog(
-                                context: context,
-                                builder: (_) => const InvitationsDialog(),
-                              );
-                           } else {
-                              // Otherwise show profile
-                              await Navigator.push(
-                                context, 
-                                MaterialPageRoute(builder: (_) => const ProfileScreen())
-                              );
-                           }
-                           _refreshProfile();
+      backgroundColor: GameTheme.surfaceLight, // Solid light grey background
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 1. Header (Profile & Invites)
+            _buildHeader(username, avatarUrl),
+            
+            // 2. Scrollable Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Hero Section (Welcome)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: GameTheme.glassBorder),
+                        boxShadow: GameTheme.softShadow,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Ready to play?', style: GameTheme.label),
+                                const SizedBox(height: 8),
+                                Text('Rank: Bronze', style: GameTheme.h2), // Placeholder for rank logic
+                                const SizedBox(height: 4),
+                                Text('$wins wins so far', style: GameTheme.bodyMedium),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: GameTheme.primary.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.emoji_events, color: GameTheme.primary, size: 32),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 32),
+                    Text("GAME MODES", style: GameTheme.label),
+                    const SizedBox(height: 16),
+                    
+                    // Game Mode Cards
+                    _buildGameModeCard(
+                      title: 'Play Offline',
+                      subtitle: 'Practice vs Bots',
+                      icon: Icons.person,
+                      color: GameTheme.secondary,
+                      onPressed: _isLoading ? null : _startLocalGame,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildGameModeCard(
+                      title: 'Create Match',
+                      subtitle: 'Host a private lobby',
+                      icon: Icons.add_circle,
+                      color: GameTheme.primary,
+                      onPressed: _isLoading ? null : _createLobby,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildGameModeCard(
+                      title: 'Join Match',
+                      subtitle: 'Enter a 6-digit code',
+                      icon: Icons.login,
+                      color: GameTheme.accent,
+                      onPressed: _isLoading ? null : _showJoinDialog,
+                    ),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Sign Out (optional, but good for testing)
+                    Center(
+                      child: TextButton(
+                        onPressed: () async {
+                           await Supabase.instance.client.auth.signOut();
+                           // AuthGate triggers rebuild -> LoginScreen
                         },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: GameTheme.glassDecoration.copyWith(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                username,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                   CircleAvatar(
-                                     radius: 16,
-                                     backgroundColor: GameTheme.primary,
-                                     backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                                     child: avatarUrl == null 
-                                       ? const Icon(Icons.person, size: 20, color: Colors.white) 
-                                       : null,
-                                   ),
-                                   if (inviteCount > 0)
-                                     Positioned(
-                                       top: -4,
-                                       right: -4,
-                                       child: Container(
-                                         padding: const EdgeInsets.all(4),
-                                         decoration: const BoxDecoration(
-                                            color: Colors.red,
-                                            shape: BoxShape.circle,
-                                         ),
-                                         child: Text(
-                                            inviteCount.toString(),
-                                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)
-                                         ),
-                                       ),
-                                     ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                  }
+                        child: const Text('Sign Out', style: TextStyle(color: GameTheme.error)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              
-              Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Logo
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: GameTheme.softShadow,
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: Image.asset(
-                            'assets/app_icon.jpg',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_,__,___) => Container(color: GameTheme.primary, child: const Icon(Icons.style, size: 64, color: Colors.white)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Title
-                      const Text(
-                        'NERTZ ROYALE',
-                        style: TextStyle(
-                          fontFamily: 'Roboto', // Or usage of GameTheme typography if defined
-                          fontSize: 40,
-                          fontWeight: FontWeight.w900,
-                          color: GameTheme.primary,
-                          letterSpacing: 2,
-                          shadows: [Shadow(color: Colors.black26, offset: Offset(0, 4), blurRadius: 10)],
-                        ),
-                      ),
-                      const SizedBox(height: 48),
-
-                      // Actions
-                      _buildMenuButton(
-                        icon: Icons.person,
-                        label: 'PLAY OFFLINE',
-                        color: GameTheme.secondary,
-                        onPressed: _isLoading ? null : _startLocalGame,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildMenuButton(
-                        icon: Icons.add_circle,
-                        label: 'CREATE MATCH',
-                        color: GameTheme.primary,
-                        onPressed: _isLoading ? null : _createLobby,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildMenuButton(
-                        icon: Icons.login,
-                        label: 'JOIN MATCH',
-                        color: GameTheme.accent,
-                        onPressed: _isLoading ? null : _showJoinDialog,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Invite Friend placeholder - in a real app this would share the current Lobby Code
-                      _buildMenuButton(
-                        icon: Icons.share,
-                        label: 'INVITE FRIEND',
-                        color: Colors.white24,
-                        onPressed: () {
-                           ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(content: Text('Host a match to get a code to share!')),
-                           );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildMenuButton({
-    required IconData icon, 
-    required String label, 
-    required Color color, 
-    VoidCallback? onPressed
+  Widget _buildHeader(String username, String? avatarUrl) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+               Hero(
+                 tag: 'app_logo',
+                 child: ClipRRect(
+                   borderRadius: BorderRadius.circular(12),
+                   child: Image.asset('assets/app_icon.jpg', width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.style, color: GameTheme.primary)),
+                 ),
+               ),
+               const SizedBox(width: 12),
+               const Text("NERTZ ROYALE", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: GameTheme.textPrimary)),
+            ],
+          ),
+          
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: SupabaseService().getInvitesStream(),
+            builder: (context, snapshot) {
+              final inviteCount = snapshot.data?.length ?? 0;
+              return GestureDetector(
+                onTap: () {
+                   if (inviteCount > 0) {
+                     showDialog(context: context, builder: (_) => const InvitationsDialog());
+                   } else {
+                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())).then((_) => _refreshProfile());
+                   }
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                     CircleAvatar(
+                       radius: 20,
+                       backgroundColor: GameTheme.primary,
+                       backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                       child: avatarUrl == null ? const Icon(Icons.person, color: Colors.white) : null,
+                     ),
+                     if (inviteCount > 0)
+                       Positioned(
+                         top: 0,
+                         right: 0,
+                         child: Container(
+                           padding: const EdgeInsets.all(4),
+                           decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle, border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 2))),
+                           child: Text('$inviteCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                         ),
+                       ),
+                  ],
+                ),
+              );
+            }
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGameModeCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    VoidCallback? onPressed,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 60,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 8,
-          shadowColor: color.withValues(alpha: 0.4),
-        ),
-        onPressed: onPressed,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: Colors.white,
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: GameTheme.glassBorder),
+        boxShadow: GameTheme.softShadow,
+      ),
+      child: Material( // For ripple
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: color, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: GameTheme.textPrimary)),
+                      Text(subtitle, style: GameTheme.bodyMedium),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: GameTheme.textSecondary),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

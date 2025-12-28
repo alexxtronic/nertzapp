@@ -26,8 +26,8 @@ class GameTheme {
   static const Color backgroundStart = Color(0xFFF3E8FF); // Lavender Mist
   static const Color backgroundEnd = Color(0xFFE0F2FE); // Pale Sky
   
-  static const Color glassSurface = Color(0x80FFFFFF); // 50% White
-  static const Color glassBorder = Color(0x40FFFFFF); // 25% White
+  static const Color glassSurface = Color(0xFFFFFFFF); // Solid White
+  static const Color glassBorder = Color(0xFFE2E8F0); // Solid Light Grey
   
   static const Color textPrimary = Color(0xFF1E293B); // Slate 800
   static const Color textSecondary = Color(0xFF64748B); // Slate 500
@@ -41,7 +41,7 @@ class GameTheme {
   // Legacy compatibility aliases
   static const Color background = backgroundStart;
   static const Color surface = glassSurface;
-  static const Color surfaceLight = Color(0x99FFFFFF); // 60% White
+  static const Color surfaceLight = Color(0xFFF8FAFC); // Solid Very Light Grey
   static const Color cardBackground = Colors.white;
 
   // Gradients
@@ -53,8 +53,8 @@ class GameTheme {
   
   static const LinearGradient glassGradient = LinearGradient(
     colors: [
-      Color(0x99FFFFFF), // 60% White
-      Color(0x66FFFFFF), // 40% White
+      Color(0xFFFFFFFF), // Solid White
+      Color(0xFFF8FAFC), // Solid Off-White
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -117,11 +117,11 @@ class GameTheme {
     ),
   ];
 
-  // Decoration for Glassmorphism
+  // Decoration for Glassmorphism (Now Solid)
   static BoxDecoration glassDecoration = BoxDecoration(
     gradient: glassGradient,
     borderRadius: BorderRadius.circular(24),
-    border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+    border: Border.all(color: glassBorder, width: 2),
     boxShadow: softShadow,
   );
 
@@ -149,6 +149,11 @@ class GameTheme {
   static const TextStyle body = TextStyle(
     fontSize: 16,
     color: textPrimary,
+  );
+
+  static const TextStyle bodyMedium = TextStyle(
+    fontSize: 14,
+    color: textSecondary,
   );
 
   /// Build the Flutter theme data

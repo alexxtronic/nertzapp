@@ -33,7 +33,7 @@ class InvitationsDialog extends ConsumerWidget {
                 ),
               ],
             ),
-            const Divider(color: Colors.white24, height: 32),
+            const Divider(color: GameTheme.glassBorder, height: 32),
             Expanded(
               child: StreamBuilder<List<Map<String, dynamic>>>(
                 stream: invitesStream,
@@ -111,7 +111,12 @@ class _InviteTileState extends ConsumerState<_InviteTile> {
     // We ideally want sender name, but that requires a join. 
     // For MVP, we can fetch profile or just show "Invited to match X"
     return Card(
-       elevation: 2,
+       color: const Color(0xFFF1F5F9), // Solid Slate 100
+       elevation: 0,
+       shape: RoundedRectangleBorder(
+         borderRadius: BorderRadius.circular(12),
+         side: const BorderSide(color: GameTheme.glassBorder),
+       ),
        margin: const EdgeInsets.symmetric(vertical: 8),
        child: ListTile(
          leading: const Icon(Icons.mail, color: GameTheme.primary),

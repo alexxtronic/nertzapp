@@ -8,7 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'services/supabase_service.dart';
 import 'ui/theme/game_theme.dart';
-import 'ui/screens/lobby_screen.dart';
+import 'ui/screens/auth_gate.dart';
+import 'ui/screens/lobby_screen.dart'; // Kept if needed later, or remove if unused in main
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,7 +46,7 @@ class NertzRoyaleApp extends StatelessWidget {
       title: 'Nertz Royale',
       debugShowCheckedModeBanner: false,
       theme: GameTheme.buildTheme(),
-      home: const LobbyScreen(),
+      home: const AuthGate(),
     );
   }
 }

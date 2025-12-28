@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:nertz_royale/services/supabase_service.dart';
 import '../engine/bot_logic.dart';
 
 // ... (imports remain)
@@ -71,8 +72,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   void _startBotLoop() {
     _botTimer?.cancel();
     debugPrint('🤖 Starting bot loop...');
-    // 400ms interval = 60% faster than 800ms
-    _botTimer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
+    // 600ms interval = ~30% slower than 400ms
+    _botTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
       if (state == null || state!.phase != GamePhase.playing) {
         return;
       }
@@ -151,8 +152,14 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       // Only execute moves from OTHER players (own moves are optimistic)
       if (state != null && message.move.playerId != playerId) {
         debugPrint('📨 Executing remote move from ${message.move.playerId}');
-        GameEngine.executeMove(message.move, state!);
-        state = GameState.fromJson(state!.toJson()); // Rebuild
+        try {
+          GameEngine.executeMove(message.move, state!);
+          state = GameState.fromJson(state!.toJson()); // Rebuild
+        } catch (e, stack) {
+          debugPrint('⚠️ Error executing remote move: $e');
+          debugPrint(stack.toString());
+          // Ignore malformed move to prevent crash
+        }
       }
     } else if (message is JoinMatchMessage) {
       debugPrint('📨 JoinMatchMessage from ${message.displayName} (${message.playerId})');
@@ -203,6 +210,12 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     
     if (result.roundEnded && result.roundWinnerId != null) {
       GameEngine.endRound(state!, result.roundWinnerId!);
+      
+      // Check if this round ended the MATCH
+      if (state!.phase == GamePhase.matchEnd && state!.leader?.id == playerId) {
+        debugPrint('🏆 Match Won! Incrementing wins...');
+        SupabaseService().incrementWin();
+      }
     }
     
     // Send to network

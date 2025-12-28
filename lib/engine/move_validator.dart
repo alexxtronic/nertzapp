@@ -159,6 +159,14 @@ class MoveValidator {
     if (move.cardId == null) {
       return MoveResult.invalid(move, 'No card specified');
     }
+    
+    // Hardening: strictly validate targetPileIndex
+    final centerPiles = gameState.centerPiles; // Typically 4*players (e.g. 16)
+    if (move.targetPileIndex == null || 
+        move.targetPileIndex! < 0 || 
+        move.targetPileIndex! >= centerPiles.length) {
+       return MoveResult.invalid(move, 'Invalid center pile index');
+    }
 
     final location = player.findCard(move.cardId!);
     if (location == null) {
