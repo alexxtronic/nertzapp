@@ -390,24 +390,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(height: 16),
                           Container(
-                            padding: const EdgeInsets.all(20),
+                            padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              shape: BoxShape.circle,
                               color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: ringColor, width: 3),
                               boxShadow: [
                                 BoxShadow(
-                                  color: ringColor.withOpacity(0.6),
-                                  blurRadius: 30,
-                                  spreadRadius: 2,
-                                ),
-                                BoxShadow(
-                                  color: ringColor.withOpacity(0.3),
-                                  blurRadius: 60,
-                                  spreadRadius: 10,
+                                  color: ringColor.withOpacity(0.4),
+                                  blurRadius: 20,
+                                  spreadRadius: 0,
                                 ),
                               ],
                             ),
-                            child: Image.asset(trophyAsset, width: 80, height: 80),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(trophyAsset, width: 100, height: 100, fit: BoxFit.contain),
+                            ),
                           ),
                        ],
                      ),
