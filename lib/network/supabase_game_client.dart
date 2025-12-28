@@ -131,9 +131,9 @@ class SupabaseGameClient {
     }
     
     final json = message.toJson();
-    json['type'] = message.type.index; // Ensure enum index is sent
+    json['msgType'] = message.type.index; // Use 'msgType' to avoid Supabase collision
     
-    debugPrint('📤 SENDING: ${message.runtimeType} (type: ${message.type.index})');
+    debugPrint('📤 SENDING: ${message.runtimeType} (msgType: ${message.type.index})');
     debugPrint('📤 Payload: $json');
     
     _channel!.sendBroadcastMessage(

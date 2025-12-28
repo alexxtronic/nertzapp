@@ -36,21 +36,21 @@ abstract class GameMessage {
   
   String encode() {
     final json = toJson();
-    json['type'] = type.index;
+    json['msgType'] = type.index;  // Use 'msgType' to avoid Supabase 'type' collision
     return json.toString();
   }
   
   static GameMessage? decode(Map<String, dynamic> json) {
     try {
-      // Handle 'type' as either int or String
-      final rawType = json['type'];
+      // Use 'msgType' to avoid Supabase 'type' collision
+      final rawType = json['msgType'];
       int typeIndex;
       if (rawType is int) {
         typeIndex = rawType;
       } else if (rawType is String) {
         typeIndex = int.tryParse(rawType) ?? -1;
       } else {
-        print('⚠️ GameMessage.decode: Invalid type field: $rawType');
+        print('⚠️ GameMessage.decode: Invalid msgType field: $rawType (json: $json)');
         return null;
       }
       
