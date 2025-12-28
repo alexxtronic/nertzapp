@@ -117,10 +117,7 @@ class SupabaseGameClient {
     final seqNum = ++_sequenceNumber;
     _pendingMoves[seqNum] = move;
     
-    if (optimistic && _localState != null) {
-      GameEngine.executeMove(move, _localState!);
-    }
-    
+    // Note: Optimistic execution is handled by GameStateNotifier
     send(MoveIntentMessage(move: move, sequenceNumber: seqNum));
   }
   
@@ -144,36 +141,10 @@ class SupabaseGameClient {
     try {
       final message = GameMessage.decode(json);
       
-      if (message == null) return;
-      
-      // Since this is P2P broadcast, we need to handle "MoveIntent" from others manually 
-      // by executing it on our local state (Authoritative Client Model for MVP).
-      // If we had a server, the server would send StateSnapshot.
-      
-      // MVP Logic: If we receive a MoveIntent from SOMEONE ELSE, apply it.
-      if (message is MoveIntentMessage) {
-        if (message.move.playerId != playerId && _localState != null) {
-           GameEngine.executeMove(message.move, _localState!);
-           // We accept it implicitly for P2P
-        }
-      } else if (message is StateSnapshotMessage) {
-        _localState = message.gameState;
-      } else if (message is RequestStateMessage) {
-        // Handled by GameStateNotifier through onMessage callback
-      } else if (message is JoinMatchMessage) {
-        // Handle new player joining (if we are host, maybe send snapshot?)
-        // For MVP P2P: If we have state, add player to it.
-         if (message.playerId != playerId && _localState != null) {
-            if (!_localState!.players.containsKey(message.playerId)) {
-               _localState!.addPlayer(message.playerId, message.displayName);
-               // Rebroadcast state?
-               // Ideally Host sends Snapshot.
-               // We need concept of Host.
-            }
-         }
+      if (message != null) {
+        debugPrint('📡 _handleMessage passing to notifier: ${message.runtimeType}');
+        onMessage?.call(message);
       }
-      
-      onMessage?.call(message);
     } catch (e) {
       onError?.call('Failed to parse message: $e');
     }
