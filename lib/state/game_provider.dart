@@ -148,7 +148,9 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       debugPrint('📨 Received StateSnapshotMessage! Players: ${message.gameState.players.keys.toList()}');
       state = message.gameState;
     } else if (message is MoveIntentMessage) {
-      if (state != null) {
+      // Only execute moves from OTHER players (own moves are optimistic)
+      if (state != null && message.move.playerId != playerId) {
+        debugPrint('📨 Executing remote move from ${message.move.playerId}');
         GameEngine.executeMove(message.move, state!);
         state = GameState.fromJson(state!.toJson()); // Rebuild
       }
