@@ -317,7 +317,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       _countdownValue = 3;
     });
     
-    AudioService().playCountdown(); // Play countdown sound at start
+    // AudioService().playCountdown(); // Removed per user request
     
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -646,16 +646,15 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                     child: Container(
                       decoration: BoxDecoration(
                          shape: BoxShape.circle,
-                         border: Border.all(color: GameTheme.background, width: 2), // Space between avatars
+                         // Thin colored border if player has assigned color
+                         border: Border.all(
+                           color: opp.playerColor != null 
+                               ? PlayerColors.intToColor(opp.playerColor)!
+                               : GameTheme.background,
+                           width: 3,
+                         ),
                          color: Colors.white,
                          boxShadow: [
-                            // Color glow if player has assigned color
-                            if (opp.playerColor != null)
-                              BoxShadow(
-                                color: (PlayerColors.intToColor(opp.playerColor) ?? Colors.grey).withValues(alpha: 0.6),
-                                blurRadius: 12,
-                                spreadRadius: 2,
-                              ),
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 4,
@@ -675,24 +674,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                   );
                 }),
                 // Add a little padding at the end so the last one isn't clipped by the screen edge visually if margin is used
-                if (opponents.isNotEmpty) const SizedBox(width: 4),
-                
-                // Gear icon positioned below player bubbles
-                Container(
-                  margin: const EdgeInsets.only(left: 4),
-                  decoration: BoxDecoration(
-                    color: GameTheme.background.withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 20),
-                    onPressed: () {
-                      showSettingsDialog(context);
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  ),
-                ),
+                if (opponents.isNotEmpty) const SizedBox(width: 8),
               ],
             ),
           ),
