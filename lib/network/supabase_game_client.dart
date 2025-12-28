@@ -62,7 +62,8 @@ class SupabaseGameClient {
     
     _channel!
       .onBroadcast(event: 'game_message', callback: (payload) {
-        debugPrint('📡 Received broadcast: ${payload['type']}');
+        debugPrint('📡 RAW PAYLOAD: $payload');
+        debugPrint('📡 Payload keys: ${payload.keys.toList()}');
         _handleMessage(payload);
       })
       .onPresenceSync((payload) {
