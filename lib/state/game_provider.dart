@@ -118,7 +118,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
                 final p = state!.players[id];
                 if (p == null) return false;
                 if (p.lastMoveTime == null) return true; // Never moved
-                return DateTime.now().difference(p.lastMoveTime!).inMinutes >= 3;
+                return DateTime.now().difference(p.lastMoveTime!).inMinutes >= 2;
               });
 
               // If someone is genuinely stuck (or we are stuck), vote YES

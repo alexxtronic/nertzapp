@@ -136,7 +136,11 @@ class GameEngine {
   }
 
   static ExecutionResult _executeVoteReset(Move move, PlayerState player, GameState gameState) {
-    gameState.voteForReset(player.id);
+    if (gameState.resetVotes.contains(player.id)) {
+      gameState.resetVotes.remove(player.id);
+    } else {
+      gameState.voteForReset(player.id);
+    }
     return ExecutionResult.success();
   }
 

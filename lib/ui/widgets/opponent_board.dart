@@ -32,20 +32,20 @@ class OpponentBoard extends StatelessWidget {
         const SizedBox(height: 2),
         // Overlapping Stack
         SizedBox(
-          width: 60, 
-          height: 55, 
+          width: 75,  // Increased from 60
+          height: 70, // Increased from 55
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               // Nertz Pile (Card) - Shifted Right and Top
               Positioned(
-                right: 0,
+                right: 4,
                 top: 0,
                 child: Container(
-                  width: 35,
-                  height: 50,
+                  width: 44, // Increased from 35 (+~25%)
+                  height: 62, // Increased from 50 (+~24%)
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                     boxShadow: const [
                       BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(1, 1)),
                     ],
@@ -56,16 +56,21 @@ class OpponentBoard extends StatelessWidget {
                   ),
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.all(2),
+                      width: 24,
+                      height: 24,
+                      alignment: Alignment.center,
                       decoration: const BoxDecoration(
-                        color: Colors.black54,
+                        color: GameTheme.primary, // Purple circle
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                        ],
                       ),
                       child: Text(
                         '${player.nertzPile.remaining}',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -78,8 +83,8 @@ class OpponentBoard extends StatelessWidget {
                 left: 0,
                 bottom: 0,
                 child: Container(
-                   width: 32,
-                   height: 32,
+                   width: 38, // Increased from 32
+                   height: 38, // Increased from 32
                    decoration: BoxDecoration(
                      shape: BoxShape.circle,
                      border: Border.all(
@@ -101,7 +106,7 @@ class OpponentBoard extends StatelessWidget {
                      ],
                    ),
                    child: player.avatarUrl == null 
-                     ? Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)))
+                     ? Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)))
                      : null,
                 ),
               ),

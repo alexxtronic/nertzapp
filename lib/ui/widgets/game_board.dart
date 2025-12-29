@@ -512,9 +512,9 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                           _buildHeader(player),
                           _buildOpponentsRow(),
                           _buildCenterArea(),
-                          const SizedBox(height: 4),
-                          _buildWorkPiles(context, player),
                           const SizedBox(height: 12),
+                          _buildWorkPiles(context, player),
+                          const SizedBox(height: 16),
                           _buildPlayerHand(player),
                           const SizedBox(height: 16),
                         ],
@@ -546,42 +546,39 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     if (gameState.resetVotes.isEmpty) return const SizedBox.shrink();
     
     return Positioned(
-      bottom: 150, // Positioned above player hand
-      left: 0,
-      right: 0,
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: GameTheme.error.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: GameTheme.softShadow,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'VOTE FOR RESET',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+      bottom: 100, // Just above the hand/button
+      left: 20, // Aligned with the button
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: GameTheme.error.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: GameTheme.softShadow,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'RESET?',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
               ),
-              const SizedBox(width: 8),
-              ...gameState.players.keys.map((pid) {
-                 final voted = gameState.resetVotes.contains(pid);
-                 return Padding(
-                   padding: const EdgeInsets.symmetric(horizontal: 2),
-                   child: Icon(
-                     voted ? Icons.check_circle : Icons.radio_button_unchecked,
-                     color: Colors.white,
-                     size: 16,
-                   ),
-                 );
-               }),
-            ],
-          ),
+            ),
+            const SizedBox(width: 4),
+            ...gameState.players.keys.map((pid) {
+               final voted = gameState.resetVotes.contains(pid);
+               return Padding(
+                 padding: const EdgeInsets.symmetric(horizontal: 1),
+                 child: Icon(
+                   voted ? Icons.check_circle : Icons.radio_button_unchecked,
+                   color: Colors.white,
+                   size: 10,
+                 ),
+               );
+             }),
+          ],
         ),
       ),
     );
@@ -752,9 +749,9 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   Widget _buildCenterArea() {
     // 5% larger than before (was 84%, now 89% of normal)
-    // Scaled for 6 columns (was 0.89 for 4 cols)
-    const double miniCardWidth = GameTheme.cardWidth * 0.70;
-    const double miniCardHeight = GameTheme.cardHeight * 0.70;
+    // Restored scale (0.89) for center piles
+    const double miniCardWidth = GameTheme.cardWidth * 0.89;
+    const double miniCardHeight = GameTheme.cardHeight * 0.89;
     
     // Circular layout for 16 cards
     // Positions arranged in concentric arcs
@@ -764,7 +761,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         // SizedBox(height: GameTheme.cardHeight * 0.3),
         const SizedBox(height: 4),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(
             children: [
               Text(
@@ -792,15 +789,19 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         for (int row = 0; row < 3; row++)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(), // Just to allow overflow if needed without error
+              child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(6, (col) {
                 final index = row * 6 + col;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 1),
                   child: _buildCenterPileSlot(index, miniCardWidth, miniCardHeight),
                 );
               }),
+            ),
             ),
           ),
       ],
@@ -1239,156 +1240,40 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       return const GhostSlot();
     }
     
-    // Calculate offset based on pile size (more cards = more visible stacking)
-    final stackOffset = (pile.length - 1).clamp(0, 3) * 5.0;
+    // Condensed cascade view - Show every card directly with small offset
+    const double cascadeOffset = 18.0;
+    
+    // Calculate total height to ensure SizedBox is large enough
+    double totalHeight = GameTheme.cardHeight + ((pile.length - 1) * cascadeOffset);
     
     return SizedBox(
       width: GameTheme.cardWidth,
-      height: GameTheme.cardHeight + stackOffset + 15,
+      height: totalHeight,
       child: Stack(
-        children: [
-          // Starting card (first card) - shows at top, peeking
-          if (pile.length > 1)
-            Positioned(
-              top: 0,
-              left: 0,
-              child: Draggable<PlayingCard>(
-                data: pile.cards.first,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: Transform.scale(
-                    scale: 1.1,
-                    child: GlassCard(card: pile.cards.first),
-                  ),
-                ),
-                childWhenDragging: Opacity(
-                  opacity: 0.3,
-                  child: Container(
-                    width: GameTheme.cardWidth,
-                    height: 25,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(GameTheme.cardRadius),
-                        topRight: Radius.circular(GameTheme.cardRadius),
-                      ),
-                      border: Border.all(
-                        color: Colors.grey.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${pile.cards.first.rank.symbol}${pile.cards.first.suit.symbol}',
-                        style: TextStyle(
-                          color: pile.cards.first.color == CardColor.red 
-                            ? GameTheme.cardRed 
-                            : GameTheme.cardBlack,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                child: Container(
-                  width: GameTheme.cardWidth,
-                  height: 25,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(GameTheme.cardRadius),
-                      topRight: Radius.circular(GameTheme.cardRadius),
-                    ),
-                    border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${pile.cards.first.rank.symbol}${pile.cards.first.suit.symbol}',
-                      style: TextStyle(
-                        color: pile.cards.first.color == CardColor.red 
-                          ? GameTheme.cardRed 
-                          : GameTheme.cardBlack,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          // Stack indicator (shows more cards between first and top)
-          if (pile.length > 2)
-            for (int i = 0; i < (pile.length - 2).clamp(0, 2); i++)
-              Positioned(
-                top: 20 + (i * 5.0),
-                left: 0,
-                child: Container(
-                  width: GameTheme.cardWidth,
-                  height: GameTheme.cardHeight,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.7 - (i * 0.2)),
-                    borderRadius: BorderRadius.circular(GameTheme.cardRadius),
-                    border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                ),
-              ),
-          // Top card - fully visible and draggable
-          Positioned(
-            top: pile.length > 1 ? 20.0 + stackOffset - 5 : 0.0,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Draggable<PlayingCard>(
-                  data: pile.cards.last,
+        clipBehavior: Clip.none,
+        children: List.generate(pile.length, (index) {
+          final card = pile.cards[index];
+          final isTopCard = index == pile.length - 1;
+          
+          return Positioned(
+            top: index * cascadeOffset,
+            left: 0,
+            child: isTopCard
+              ? Draggable<PlayingCard>(
+                  data: card,
                   feedback: Material(
                     color: Colors.transparent,
                     child: Transform.scale(
                       scale: 1.1,
-                      child: GlassCard(card: pile.cards.last),
+                      child: GlassCard(card: card),
                     ),
                   ),
-                  childWhenDragging: Opacity(
-                    opacity: 0.3,
-                    child: GlassCard(card: pile.cards.last),
-                  ),
-                  child: GlassCard(card: pile.cards.last),
-                ),
-                // Card count badge if more than 1 card
-                if (pile.length > 1)
-                  Positioned(
-                    bottom: -6,
-                    right: -6,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: GameTheme.secondary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.5),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${pile.length}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
+                  childWhenDragging: Opacity(opacity: 0.3, child: GlassCard(card: card)),
+                  child: GlassCard(card: card),
+                )
+              : GlassCard(card: card), 
+          );
+        }),
       ),
     );
   }
@@ -1552,11 +1437,11 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   Widget _buildStuckButton() {
      final hasVoted = gameState.resetVotes.contains(currentPlayerId);
      return GestureDetector(
-       onTap: hasVoted ? null : widget.onVoteReset,
+       onTap: widget.onVoteReset, // Always allow tap to toggle
        child: Container(
          width: 48,
          height: 48,
-         margin: const EdgeInsets.only(left: 12, bottom: 20), // Align with cards
+         margin: const EdgeInsets.only(left: 12, bottom: 20),
          decoration: BoxDecoration(
            color: hasVoted ? Colors.grey : const Color(0xFFFF4444),
            shape: BoxShape.circle,
@@ -1574,7 +1459,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
          ),
          child: Center(
            child: hasVoted 
-             ? const Icon(Icons.check, color: Colors.white, size: 24)
+             ? const Icon(Icons.close, color: Colors.white, size: 24) // X to cancel
              : const Column(
                  mainAxisAlignment: MainAxisAlignment.center,
                  children: [
