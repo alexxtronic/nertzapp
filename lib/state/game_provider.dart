@@ -6,7 +6,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:nertz_royale/services/supabase_service.dart';
-import '../engine/bot_logic.dart';
+import 'package:nertz_royale/engine/bot_logic.dart';
+import 'package:nertz_royale/models/bot_difficulty.dart';
+import 'package:nertz_royale/state/bot_difficulty_provider.dart';
 
 // ... (imports remain)
 
@@ -51,17 +53,18 @@ final gameClientProvider = Provider<SupabaseGameClient>((ref) {
 /// Current match ID
 final matchIdProvider = StateProvider<String?>((ref) => null);
 
-/// Game state notifier
 class GameStateNotifier extends StateNotifier<GameState?> {
   final String playerId;
   final String playerName;
   final SupabaseGameClient client;
+  final Ref ref; // Added for accessing bot difficulty
   Timer? _botTimer;
   
   GameStateNotifier({
     required this.playerId, 
     required this.playerName,
     required this.client,
+    required this.ref,
   }) : super(null);
   
   @override
@@ -73,8 +76,12 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   void _startBotLoop() {
     _botTimer?.cancel();
     debugPrint('🤖 Starting bot loop...');
-    // 2100ms interval = 40% slower than previous 1500ms
-    _botTimer = Timer.periodic(const Duration(milliseconds: 2100), (timer) {
+    // Get bot difficulty from provider (default: medium = 2500ms)
+    final difficulty = ref.read(botDifficultyProvider);
+    final delayMs = difficulty.delayMs;
+    debugPrint('🤖 Bot difficulty: ${difficulty.displayName} (${delayMs}ms delay)');
+    
+    _botTimer = Timer.periodic(Duration(milliseconds: delayMs), (timer) {
       if (state == null || state!.phase != GamePhase.playing) {
         return;
       }
@@ -323,7 +330,8 @@ final gameStateProvider = StateNotifierProvider<GameStateNotifier, GameState?>((
   final notifier = GameStateNotifier(
     playerId: playerId, 
     playerName: playerName,
-    client: client
+    client: client,
+    ref: ref,
   );
   
   // Wire up callbacks

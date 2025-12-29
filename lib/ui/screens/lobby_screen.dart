@@ -6,8 +6,10 @@ import 'package:nertz_royale/services/supabase_service.dart';
 import 'package:nertz_royale/ui/screens/profile_screen.dart';
 
 import '../../state/game_provider.dart';
+import '../../state/bot_difficulty_provider.dart';
 import '../theme/game_theme.dart';
 import '../widgets/invitations_dialog.dart';
+import '../widgets/bot_difficulty_dialog.dart';
 import 'game_screen.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
@@ -216,13 +218,75 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                     Text("GAME MODES", style: GameTheme.label),
                     const SizedBox(height: 16),
                     
-                    // Game Mode Cards
-                    _buildGameModeCard(
-                      title: 'Play Offline',
-                      subtitle: 'Practice vs Bots',
-                      icon: Icons.person,
-                      color: GameTheme.secondary,
-                      onPressed: _isLoading ? null : _startLocalGame,
+                    // Play Offline - with inline settings button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: GameTheme.glassBorder),
+                        boxShadow: GameTheme.softShadow,
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          onTap: _isLoading ? null : _startLocalGame,
+                          onLongPress: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => const BotDifficultyDialog(),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: GameTheme.secondary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(Icons.person, color: GameTheme.secondary, size: 28),
+                                ),
+                                const SizedBox(width: 16),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Play Offline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: GameTheme.textPrimary)),
+                                      Text('Practice vs Bots', style: GameTheme.bodyMedium),
+                                    ],
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) => const BotDifficultyDialog(),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    margin: const EdgeInsets.only(right: 8),
+                                    decoration: BoxDecoration(
+                                      color: GameTheme.secondary.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.settings,
+                                      size: 20,
+                                      color: GameTheme.secondary,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right, color: GameTheme.textSecondary),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     _buildGameModeCard(
@@ -330,6 +394,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     required IconData icon,
     required Color color,
     VoidCallback? onPressed,
+    Widget? trailing,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -365,8 +430,12 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                       Text(subtitle, style: GameTheme.bodyMedium),
                     ],
                   ),
-                ),
-                const Icon(Icons.chevron_right, color: GameTheme.textSecondary),
+                 ),
+                 if (trailing != null) ...[
+                   trailing,
+                 ] else ...[
+                   const Icon(Icons.chevron_right, color: GameTheme.textSecondary),
+                 ],
               ],
             ),
           ),

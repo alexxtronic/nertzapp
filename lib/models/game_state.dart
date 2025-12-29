@@ -117,13 +117,13 @@ class GameState {
         shuffledDeck: deck,
         isBot: player.isBot,
       );
-      newState.scoreTotal = player.scoreTotal;
-      // Preserve player color across rounds
-      if (player.playerColor != null) {
-        players[player.id] = newState.copyWith(playerColor: player.playerColor);
-      } else {
-        players[player.id] = newState;
-      }
+      
+      // Preserve player color and scoreTotal across rounds
+      final updatedState = newState.copyWith(
+        playerColor: player.playerColor, // Preserve color from previous round
+      );
+      updatedState.scoreTotal = player.scoreTotal; // Preserve total score
+      players[player.id] = updatedState;
     }
 
     phase = GamePhase.playing;
