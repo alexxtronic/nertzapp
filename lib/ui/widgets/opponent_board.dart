@@ -93,9 +93,6 @@ class OpponentBoard extends StatelessWidget {
                           : Colors.white, 
                        width: 2
                      ),
-                     image: player.avatarUrl != null 
-                        ? DecorationImage(image: NetworkImage(player.avatarUrl!), fit: BoxFit.cover)
-                        : null,
                      color: GameTheme.surface,
                      boxShadow: [
                         BoxShadow(
@@ -105,9 +102,17 @@ class OpponentBoard extends StatelessWidget {
                         )
                      ],
                    ),
-                   child: player.avatarUrl == null 
-                     ? Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)))
-                     : null,
+                   child: ClipOval(
+                     child: player.avatarUrl != null 
+                       ? Image.network(
+                           player.avatarUrl!,
+                           fit: BoxFit.cover,
+                           errorBuilder: (context, error, stackTrace) {
+                              return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)));
+                           },
+                         )
+                       : Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14))),
+                   ),
                 ),
               ),
             ],

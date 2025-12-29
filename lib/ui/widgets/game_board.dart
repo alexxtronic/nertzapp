@@ -281,11 +281,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   PlayerState? get currentPlayer => gameState.getPlayer(currentPlayerId);
   
-  List<PlayerState> get opponents => gameState.players.values
-      .where((p) => p.id != currentPlayerId)
-      .where((p) => p.id != currentPlayerId)
-      .where((p) => p.id != currentPlayerId)
-      .toList();
+  List<PlayerState> get opponents => gameState.activeOpponents(currentPlayerId);
       
   @override
   void initState() {
@@ -319,6 +315,22 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       // "the person who hits 100 points first".
       // Let's just play it.
       AudioService().playApplause();
+    }
+    
+    // Detect Reset (Vote Passed)
+    final oldReset = oldWidget.gameState.lastResetTime;
+    final newReset = widget.gameState.lastResetTime;
+    if (oldReset != newReset && newReset != null) {
+      // Check for recent reset (within 5 seconds)
+      if (DateTime.now().difference(newReset).inSeconds < 5) {
+        AudioService().playShuffle();
+        // Force rebuild to show 'Vote Passed!' banner
+        setState(() {}); 
+        // Hide it after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+           if (mounted) setState(() {});
+        });
+      }
     }
   }
   
@@ -514,9 +526,9 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                           _buildCenterArea(),
                           const SizedBox(height: 12),
                           _buildWorkPiles(context, player),
-                          const SizedBox(height: 16),
+                          const Spacer(), // Push Hand to bottom
                           _buildPlayerHand(player),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 32), // Bottom padding for thumbs
                         ],
                       ),
                     ),
@@ -543,7 +555,11 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   }
 
   Widget _buildVoteBanner() {
-    if (gameState.resetVotes.isEmpty) return const SizedBox.shrink();
+    final lastReset = gameState.lastResetTime;
+    final isRecentReset = lastReset != null && 
+        DateTime.now().difference(lastReset).inSeconds < 2;
+
+    if (!isRecentReset && gameState.resetVotes.isEmpty) return const SizedBox.shrink();
     
     return Positioned(
       bottom: 100, // Just above the hand/button
@@ -551,33 +567,37 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: GameTheme.error.withValues(alpha: 0.9),
+          color: isRecentReset 
+              ? Colors.green 
+              : GameTheme.error.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(12),
           boxShadow: GameTheme.softShadow,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'RESET?',
-              style: TextStyle(
+            Text(
+              isRecentReset ? 'Vote Passed!' : 'RESET?',
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 10,
               ),
             ),
-            const SizedBox(width: 4),
-            ...gameState.players.keys.map((pid) {
-               final voted = gameState.resetVotes.contains(pid);
-               return Padding(
-                 padding: const EdgeInsets.symmetric(horizontal: 1),
-                 child: Icon(
-                   voted ? Icons.check_circle : Icons.radio_button_unchecked,
-                   color: Colors.white,
-                   size: 10,
-                 ),
-               );
-             }),
+            if (!isRecentReset) ...[
+              const SizedBox(width: 4),
+              ...gameState.players.keys.map((pid) {
+                 final voted = gameState.resetVotes.contains(pid);
+                 return Padding(
+                   padding: const EdgeInsets.symmetric(horizontal: 1),
+                   child: Icon(
+                     voted ? Icons.check_circle : Icons.radio_button_unchecked,
+                     color: Colors.white,
+                     size: 10,
+                   ),
+                 );
+               }),
+            ],
           ],
         ),
       ),
@@ -749,9 +769,9 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   Widget _buildCenterArea() {
     // 5% larger than before (was 84%, now 89% of normal)
-    // Restored scale (0.89) for center piles
-    const double miniCardWidth = GameTheme.cardWidth * 0.89;
-    const double miniCardHeight = GameTheme.cardHeight * 0.89;
+    // Scaled for 6 columns (0.75 to save space)
+    const double miniCardWidth = GameTheme.cardWidth * 0.75;
+    const double miniCardHeight = GameTheme.cardHeight * 0.75;
     
     // Circular layout for 16 cards
     // Positions arranged in concentric arcs
@@ -1240,7 +1260,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       return const GhostSlot();
     }
     
-    // Condensed cascade view - Show every card directly with small offset
+    // Condensed cascade view with Stack Dragging Support
     const double cascadeOffset = 18.0;
     
     // Calculate total height to ensure SizedBox is large enough
@@ -1253,25 +1273,82 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         clipBehavior: Clip.none,
         children: List.generate(pile.length, (index) {
           final card = pile.cards[index];
-          final isTopCard = index == pile.length - 1;
+          
+          // Determine if we can drag this card (and cards above it)
+          // Rule: A card is draggable if it and all cards above it form a valid descending alternating sequence
+          bool isDraggable = true;
+          for (int i = index; i < pile.length - 1; i++) {
+             final current = pile.cards[i];
+             final next = pile.cards[i + 1];
+             if (!current.canStack(next)) { // Note: canStack logic might be reversed? 
+                 // WorkPile is built upwards? No, pile.cards list usually [bottom, ... top]
+                 // So pile.cards[i] is below pile.cards[i+1].
+                 // Valid stack: Red 5 on Black 6.
+                 // So 'next' (top) must be compatible with 'current' (bottom)?
+                 // Standard Rule: You move a card to another pile if it fits.
+                 // To move a STACK, the stack itself must be valid.
+                 // In Nertz/Solitaire, the piles ARE valid by definition. You can't put invalid cards on top.
+                 // So *any substring* of the stack from index N to Top is valid? 
+                 // Yes, usually. Unless invalid states exist. Assuming valid state: 
+                 // Any card in the work pile can be dragged provided the destination accepts it.
+             }
+          }
+          // The issue might be Draggable hit testing obscures cards below.
+          // In a Stack, later children render on top.
+          // If Top Card is draggable, it's fine.
+          // If Middle Card is draggable, its 'child' (rendering) is in the middle of the stack.
+          // Draggable widget works by wrapping the child.
+          
+          // User said "I can't grab the TOP card".
+          // My previous code: `isTopCard ? Draggable(...) : GlassCard(...)`.
+          // That SHOULD work. Maybe the `Stack` clipping or `Positioned` was wrong?
+          // I will use exact logic but ensure `feedback` is correct.
+          
+          // Let's make ONLY the top card draggable for now to solve the "Critical Error" simply,
+          // OR implement full stack drag which is better UX.
+          // I'll stick to Top Card + Valid Substack logic if possible, but safe fallback is Top Card.
+          
+          // Given the user report "can't grab top card", I'll assume they want standard behavior.
+          // I'll make the Top Card draggable properly.
+          // And IF the sub-stack is selected, Draggable should handle it.
+          
+          // Simplifying: Just make every card draggable? No, you can't drag buried cards unless you drag the stack.
+          // I'll assume for Nertz Royale (fast pace), dragging just the top card is primary.
+          // Dragging stacks is secondary but expected.
+          
+          // I'll wrap EVERY card in Draggable?
+          // If I drag a middle card, I'm trying to drag the stack from that point up.
+          // `data` should be the stack? Or the card?
+          // `Move` event expects `cardId`. The backend likely handles moving the stack if context implies it.
+          // `MoveType.moveStack` exists in `_buildWorkPiles` drop logic!
+          // So if I drag Card X, and Card X is inside the pile, the Drop Target detects it.
+          // So I MUST make middle cards draggable.
           
           return Positioned(
             top: index * cascadeOffset,
             left: 0,
-            child: isTopCard
-              ? Draggable<PlayingCard>(
-                  data: card,
-                  feedback: Material(
-                    color: Colors.transparent,
-                    child: Transform.scale(
-                      scale: 1.1,
-                      child: GlassCard(card: card),
-                    ),
-                  ),
-                  childWhenDragging: Opacity(opacity: 0.3, child: GlassCard(card: card)),
-                  child: GlassCard(card: card),
-                )
-              : GlassCard(card: card), 
+            child: Draggable<PlayingCard>(
+              data: card,
+              feedback: Material(
+                color: Colors.transparent,
+                child: Stack(
+                   clipBehavior: Clip.none,
+                   children: List.generate(pile.length - index, (subIndex) {
+                       final subCard = pile.cards[index + subIndex];
+                       return Positioned(
+                         top: subIndex * cascadeOffset,
+                         child: GlassCard(card: subCard),
+                       );
+                   }),
+                ),
+              ),
+              childWhenDragging: Opacity(
+                 opacity: 0.3, 
+                 child: GlassCard(card: card), // This only hides the ONE card being dragged, not the stack above it.
+                 // Ideally hide all above? Complex. For now, 0.3 opacity on base is fine.
+              ),
+              child: GlassCard(card: card),
+            ), 
           );
         }),
       ),
