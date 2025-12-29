@@ -303,26 +303,34 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
     return Scaffold(
       body: Stack(
         children: [
-          GameBoard(
-            gameState: gameState,
-            currentPlayerId: playerId,
-            style: cardStyle,
-            onMove: _handleMove,
-            onCenterPilePlaced: _showPlusOneAnimation,
-            onLeaveMatch: () {
-              ref.read(gameStateProvider.notifier).reset();
-              Navigator.of(context).pushAndRemoveUntil(
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(
-                      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                      child: child,
-                    );
-                  },
-                  transitionDuration: const Duration(milliseconds: 300),
-                ),
-                (route) => false,
+          Consumer(
+            builder: (context, ref, child) {
+              final selectedCardBack = ref.watch(selectedCardBackProvider).valueOrNull ?? 'card_back_classic_default';
+              final cardBackAsset = EconomyService.getCardBackAssetPath(selectedCardBack);
+              
+              return GameBoard(
+                gameState: gameState,
+                currentPlayerId: playerId,
+                style: cardStyle,
+                selectedCardBack: cardBackAsset,
+                onMove: _handleMove,
+                onCenterPilePlaced: _showPlusOneAnimation,
+                onLeaveMatch: () {
+                  ref.read(gameStateProvider.notifier).reset();
+                  Navigator.of(context).pushAndRemoveUntil(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(
+                          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                          child: child,
+                        );
+                      },
+                      transitionDuration: const Duration(milliseconds: 300),
+                    ),
+                    (route) => false,
+                  );
+                },
               );
             },
           ),

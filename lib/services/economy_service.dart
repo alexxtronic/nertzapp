@@ -180,4 +180,62 @@ class EconomyService {
     if (roundScore <= 0) return 0;
     return roundScore ~/ 10;
   }
+
+  /// Get user's selected card back
+  Future<String> getSelectedCardBack() async {
+    final userId = _currentUserId;
+    if (userId == null) return 'card_back_classic_default';
+
+    try {
+      final response = await _supabase
+          .from('profiles')
+          .select('selected_card_back')
+          .eq('id', userId)
+          .maybeSingle();
+
+      return response?['selected_card_back'] as String? ?? 'card_back_classic_default';
+    } catch (e) {
+      print('❌ Error fetching selected card back: $e');
+      return 'card_back_classic_default';
+    }
+  }
+
+  /// Set user's selected card back
+  Future<bool> setSelectedCardBack(String itemId) async {
+    final userId = _currentUserId;
+    if (userId == null) return false;
+
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'selected_card_back': itemId})
+          .eq('id', userId);
+
+      print('🎴 Selected card back: $itemId');
+      return true;
+    } catch (e) {
+      print('❌ Error setting card back: $e');
+      return false;
+    }
+  }
+
+  /// Get asset path for a card back item ID
+  static String getCardBackAssetPath(String itemId) {
+    switch (itemId) {
+      case 'card_back_classic_default':
+        return 'assets/card_back.png';
+      case 'card_back_classic_gold':
+        return 'assets/card_backs/classic_gold.png';
+      case 'card_back_classic_cosmic':
+        return 'assets/card_backs/classic_cosmic.jpg';
+      case 'card_back_hippie_cosmic':
+        return 'assets/card_backs/hippie_cosmic.jpg';
+      case 'card_back_medieval_blue':
+        return 'assets/card_backs/medieval_blue.jpg';
+      case 'card_back_medieval_red':
+        return 'assets/card_backs/medieval_red.jpg';
+      default:
+        return 'assets/card_back.png';
+    }
+  }
 }

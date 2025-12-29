@@ -69,6 +69,7 @@ flutter:
     - assets/trophies/
     - assets/nertz_button.png
     - assets/card_back.png
+    - assets/card_backs/
     - assets/coin_icon.png
     - assets/gem_icon.png
     - assets/default_avatar.jpg

@@ -16,23 +16,7 @@ class ShopScreen extends ConsumerStatefulWidget {
   ConsumerState<ShopScreen> createState() => _ShopScreenState();
 }
 
-class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final List<String> _categories = ['Card Backs', 'Avatars', 'Sounds'];
-  final List<String> _categoryKeys = ['card_back', 'avatar', 'sound'];
-  
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: _categories.length, vsync: this);
-  }
-  
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _ShopScreenState extends ConsumerState<ShopScreen> {
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(shopProductsProvider);
@@ -40,9 +24,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     final balanceAsync = ref.watch(balanceProvider);
     
     return Scaffold(
-      backgroundColor: GameTheme.background,
+      backgroundColor: GameTheme.surfaceLight,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: GameTheme.textPrimary),
@@ -62,25 +46,14 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
             child: CurrencyDisplay(compact: true),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: GameTheme.primary,
-          labelColor: GameTheme.primary,
-          unselectedLabelColor: GameTheme.textSecondary,
-          tabs: _categories.map((c) => Tab(text: c)).toList(),
-        ),
       ),
       body: productsAsync.when(
         data: (products) => inventoryAsync.when(
           data: (inventory) => balanceAsync.when(
-            data: (balance) => TabBarView(
-              controller: _tabController,
-              children: _categoryKeys.map((category) {
-                final categoryProducts = products
-                    .where((p) => p.category == category)
-                    .toList();
-                return _buildProductGrid(categoryProducts, inventory, balance);
-              }).toList(),
+            data: (balance) => _buildCardBacksList(
+              products.where((p) => p.category == 'card_back').toList(),
+              inventory,
+              balance,
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, __) => const Center(child: Text('Error loading balance')),
@@ -94,51 +67,83 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     );
   }
   
-  Widget _buildProductGrid(
+  Widget _buildCardBacksList(
     List<ShopProduct> products,
     List<InventoryItem> inventory,
     CurrencyBalance? balance,
   ) {
-    if (products.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.shopping_bag_outlined, size: 64, color: GameTheme.textSecondary.withValues(alpha: 0.5)),
-            const SizedBox(height: 16),
-            const Text('Coming Soon!', style: TextStyle(color: GameTheme.textSecondary, fontSize: 18)),
-          ],
-        ),
-      );
-    }
+    // Group products by style
+    final classicProducts = products.where((p) => p.id.contains('classic')).toList();
+    final hippieProducts = products.where((p) => p.id.contains('hippie')).toList();
+    final medievalProducts = products.where((p) => p.id.contains('medieval')).toList();
     
-    return GridView.builder(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.75,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final product = products[index];
-        final isOwned = inventory.any((i) => i.itemId == product.id);
-        return _ShopItemCard(
-          product: product,
-          isOwned: isOwned,
-          balance: balance,
-          onPurchase: () => _handlePurchase(product, balance),
-        );
-      },
+      children: [
+        if (classicProducts.isNotEmpty) ...[
+          _buildStyleSection('Classic', classicProducts, inventory, balance),
+          const SizedBox(height: 24),
+        ],
+        if (hippieProducts.isNotEmpty) ...[
+          _buildStyleSection('Hippie', hippieProducts, inventory, balance),
+          const SizedBox(height: 24),
+        ],
+        if (medievalProducts.isNotEmpty) ...[
+          _buildStyleSection('Medieval', medievalProducts, inventory, balance),
+          const SizedBox(height: 24),
+        ],
+      ],
+    );
+  }
+  
+  Widget _buildStyleSection(
+    String styleName,
+    List<ShopProduct> products,
+    List<InventoryItem> inventory,
+    CurrencyBalance? balance,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          styleName.toUpperCase(),
+          style: const TextStyle(
+            color: GameTheme.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 240,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              final isOwned = inventory.any((i) => i.itemId == product.id) || product.isFree;
+              return Padding(
+                padding: EdgeInsets.only(right: index < products.length - 1 ? 12 : 0),
+                child: _CardBackItem(
+                  product: product,
+                  isOwned: isOwned,
+                  balance: balance,
+                  onPurchase: () => _handlePurchase(product, balance),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
   
   Future<void> _handlePurchase(ShopProduct product, CurrencyBalance? balance) async {
     if (balance == null) return;
     
-    // Determine currency to use
-    final useGems = product.priceGems > 0 && product.priceCoins == 0;
+    // Determine currency to use (prefer coins if available)
+    final useGems = product.priceCoins == 0 && product.priceGems > 0;
     final price = useGems ? product.priceGems : product.priceCoins;
     final currency = useGems ? 'gems' : 'coins';
     final currentBalance = useGems ? balance.gems : balance.coins;
@@ -157,19 +162,42 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: GameTheme.surface,
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Purchase ${product.name}?', style: const TextStyle(color: GameTheme.textPrimary)),
-        content: Row(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Cost: ', style: TextStyle(color: GameTheme.textSecondary)),
-            Image.asset(
-              useGems ? 'assets/gem_icon.png' : 'assets/coin_icon.png',
-              width: 20,
-              height: 20,
+            // Preview
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                product.assetPath ?? 'assets/card_back.png',
+                width: 80,
+                height: 112,
+                fit: BoxFit.cover,
+              ),
             ),
-            const SizedBox(width: 4),
-            Text('$price', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  useGems ? 'assets/gem_icon.png' : 'assets/coin_icon.png',
+                  width: 24,
+                  height: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$price',
+                  style: const TextStyle(
+                    color: GameTheme.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         actions: [
@@ -178,7 +206,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: GameTheme.primary),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: GameTheme.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Buy'),
           ),
@@ -196,7 +227,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
     );
     
     if (success) {
-      // Refresh providers
       ref.invalidate(balanceProvider);
       ref.invalidate(inventoryProvider);
       
@@ -221,13 +251,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> with SingleTickerProvid
   }
 }
 
-class _ShopItemCard extends StatelessWidget {
+class _CardBackItem extends StatelessWidget {
   final ShopProduct product;
   final bool isOwned;
   final CurrencyBalance? balance;
   final VoidCallback onPurchase;
 
-  const _ShopItemCard({
+  const _CardBackItem({
     required this.product,
     required this.isOwned,
     required this.balance,
@@ -236,42 +266,58 @@ class _ShopItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final useGems = product.priceGems > 0 && product.priceCoins == 0;
-    final price = useGems ? product.priceGems : product.priceCoins;
     final bal = balance;
-    final canAfford = bal != null && 
-        (useGems ? bal.gems >= price : bal.coins >= price);
+    final canAffordCoins = bal != null && bal.coins >= product.priceCoins;
+    final canAffordGems = bal != null && bal.gems >= product.priceGems;
+    final canAfford = product.isFree || canAffordCoins || canAffordGems;
     
     return Container(
+      width: 140,
       decoration: BoxDecoration(
-        color: GameTheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isOwned 
               ? GameTheme.success.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.1),
+              : Colors.grey.withValues(alpha: 0.2),
           width: isOwned ? 2 : 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Preview area
+          // Card image
           Expanded(
-            flex: 3,
             child: Container(
               margin: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: GameTheme.surfaceLight,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: Center(
-                child: _buildPreview(),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  product.assetPath ?? 'assets/card_back.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
           
-          // Info section
+          // Name
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
@@ -279,23 +325,23 @@ class _ShopItemCard extends StatelessWidget {
               style: const TextStyle(
                 color: GameTheme.textPrimary,
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: 13,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           
-          // Price / Owned badge
+          // Price or Owned
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: isOwned
                 ? Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: GameTheme.success.withValues(alpha: 0.2),
+                      color: GameTheme.success.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Center(
@@ -309,131 +355,59 @@ class _ShopItemCard extends StatelessWidget {
                       ),
                     ),
                   )
-                : product.isFree
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: GameTheme.textSecondary.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'Default',
-                            style: TextStyle(
-                              color: GameTheme.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      )
-                    : GestureDetector(
-                        onTap: canAfford ? onPurchase : null,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            gradient: canAfford ? GameTheme.primaryGradient : null,
-                            color: canAfford ? null : GameTheme.textSecondary.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(
-                                useGems ? 'assets/gem_icon.png' : 'assets/coin_icon.png',
-                                width: 16,
-                                height: 16,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '$price',
-                                style: TextStyle(
-                                  color: canAfford ? Colors.white : GameTheme.textSecondary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                : GestureDetector(
+                    onTap: canAfford ? onPurchase : null,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: canAfford ? GameTheme.primaryGradient : null,
+                        color: canAfford ? null : Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Coins price
+                          if (product.priceCoins > 0) ...[
+                            Image.asset('assets/coin_icon.png', width: 14, height: 14),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${product.priceCoins}',
+                              style: TextStyle(
+                                color: canAfford ? Colors.white : GameTheme.textSecondary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                          if (product.priceCoins > 0 && product.priceGems > 0)
+                            Text(
+                              ' / ',
+                              style: TextStyle(
+                                color: canAfford ? Colors.white70 : GameTheme.textSecondary,
+                                fontSize: 10,
+                              ),
+                            ),
+                          // Gems price
+                          if (product.priceGems > 0) ...[
+                            Image.asset('assets/gem_icon.png', width: 14, height: 14),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${product.priceGems}',
+                              style: TextStyle(
+                                color: canAfford ? Colors.white : GameTheme.textSecondary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),
     );
-  }
-  
-  Widget _buildPreview() {
-    // Show different preview based on category
-    switch (product.category) {
-      case 'card_back':
-        return Container(
-          width: 50,
-          height: 70,
-          decoration: BoxDecoration(
-            gradient: _getCardBackGradient(),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-          ),
-          child: Center(
-            child: Text(
-              'N',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                shadows: [Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 4)],
-              ),
-            ),
-          ),
-        );
-      case 'avatar':
-        return Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: _getAvatarGradient(),
-          ),
-          child: const Icon(Icons.person, color: Colors.white, size: 28),
-        );
-      case 'sound':
-        return Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: GameTheme.primary.withValues(alpha: 0.2),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.music_note, color: GameTheme.primary, size: 24),
-        );
-      default:
-        return const Icon(Icons.help_outline, color: GameTheme.textSecondary, size: 32);
-    }
-  }
-  
-  LinearGradient _getCardBackGradient() {
-    switch (product.id) {
-      case 'card_back_flames':
-        return const LinearGradient(colors: [Color(0xFFFF6B35), Color(0xFFFF0000)]);
-      case 'card_back_ocean':
-        return const LinearGradient(colors: [Color(0xFF0077B6), Color(0xFF00B4D8)]);
-      case 'card_back_galaxy':
-        return const LinearGradient(colors: [Color(0xFF7B2CBF), Color(0xFF3C096C)]);
-      case 'card_back_gold':
-        return const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]);
-      default:
-        return GameTheme.primaryGradient;
-    }
-  }
-  
-  LinearGradient _getAvatarGradient() {
-    switch (product.id) {
-      case 'avatar_crown':
-        return const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]);
-      case 'avatar_fire':
-        return const LinearGradient(colors: [Color(0xFFFF6B35), Color(0xFFFF0000)]);
-      default:
-        return GameTheme.primaryGradient;
-    }
   }
 }

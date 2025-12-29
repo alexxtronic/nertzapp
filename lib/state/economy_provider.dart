@@ -35,3 +35,8 @@ final pendingCoinsProvider = StateProvider<int>((ref) => 0);
 final transactionHistoryProvider = FutureProvider<List<EconomyTransaction>>((ref) async {
   return await EconomyService().getTransactionHistory();
 });
+
+/// Provider for currently selected card back
+final selectedCardBackProvider = FutureProvider<String>((ref) async {
+  return await EconomyService().getSelectedCardBack();
+});

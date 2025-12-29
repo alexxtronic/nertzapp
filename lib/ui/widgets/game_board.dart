@@ -228,6 +228,7 @@ class GameBoard extends StatefulWidget {
   final GameState gameState;
   final String currentPlayerId;
   final CardStyle style;
+  final String selectedCardBack; // Card back asset path
   final Function(Move)? onMove;
   final Function(PlayingCard)? onCardDoubleTap;
   final VoidCallback? onCenterPilePlaced;
@@ -238,6 +239,7 @@ class GameBoard extends StatefulWidget {
     required this.gameState,
     required this.currentPlayerId,
     this.style = CardStyle.normal,
+    this.selectedCardBack = 'assets/card_back.png',
     this.onMove,
     this.onCardDoubleTap,
     this.onCenterPilePlaced,
@@ -1073,7 +1075,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(GameTheme.cardRadius),
                                 child: Image.asset(
-                                  'assets/card_back.png',
+                                  widget.selectedCardBack,
                                   width: GameTheme.cardWidth * 1.25,
                                   height: GameTheme.cardHeight * 1.25,
                                   fit: BoxFit.fill,

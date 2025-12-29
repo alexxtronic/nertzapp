@@ -1,20 +1,24 @@
 // import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nertz_royale/models/player_state.dart' show PlayerRank;
 import 'package:nertz_royale/services/supabase_service.dart';
+import 'package:nertz_royale/services/economy_service.dart';
+import 'package:nertz_royale/state/economy_provider.dart';
+import 'package:nertz_royale/models/economy.dart';
 import 'package:nertz_royale/ui/theme/game_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final SupabaseService _service = SupabaseService();
   final ImagePicker _picker = ImagePicker();
   
@@ -458,10 +462,180 @@ class _ProfileScreenState extends State<ProfileScreen> {
                  ),
                ],
              ),
+             
+             const SizedBox(height: 32),
+             
+             // 5. Customize Cards Section
+             const Align(alignment: Alignment.centerLeft, child: Text("Customize Cards", style: GameTheme.h2)),
+             const SizedBox(height: 8),
+             const Text(
+               "Select a card back for your deck",
+               style: TextStyle(color: GameTheme.textSecondary, fontSize: 14),
+             ),
+             const SizedBox(height: 16),
+             _buildCardBackSelector(),
           ],
         ),
       ),
     );
+  }
+  
+  Widget _buildCardBackSelector() {
+    final inventoryAsync = ref.watch(inventoryProvider);
+    final selectedAsync = ref.watch(selectedCardBackProvider);
+    final productsAsync = ref.watch(shopProductsProvider);
+    
+    return productsAsync.when(
+      data: (products) => inventoryAsync.when(
+        data: (inventory) => selectedAsync.when(
+          data: (selectedId) {
+            // Get owned card backs (including default)
+            final ownedIds = inventory.map((i) => i.itemId).toSet();
+            ownedIds.add('card_back_classic_default'); // Default is always owned
+            
+            final ownedProducts = products
+                .where((p) => p.category == 'card_back' && ownedIds.contains(p.id))
+                .toList();
+            
+            // Also add default if not in products
+            if (!ownedProducts.any((p) => p.id == 'card_back_classic_default')) {
+              ownedProducts.insert(0, ShopProduct(
+                id: 'card_back_classic_default',
+                name: 'Classic Red',
+                category: 'card_back',
+                priceCoins: 0,
+                priceGems: 0,
+                assetPath: 'assets/card_back.png',
+              ));
+            }
+            
+            if (ownedProducts.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Center(
+                  child: Text(
+                    "No card backs owned yet.\nVisit the shop to purchase some!",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: GameTheme.textSecondary),
+                  ),
+                ),
+              );
+            }
+            
+            return SizedBox(
+              height: 160,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: ownedProducts.length,
+                itemBuilder: (context, index) {
+                  final product = ownedProducts[index];
+                  final isSelected = product.id == selectedId;
+                  
+                  return GestureDetector(
+                    onTap: () => _selectCardBack(product.id),
+                    child: Container(
+                      width: 100,
+                      margin: EdgeInsets.only(right: index < ownedProducts.length - 1 ? 12 : 0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? GameTheme.primary : Colors.grey.shade200,
+                          width: isSelected ? 3 : 1,
+                        ),
+                        boxShadow: isSelected ? [
+                          BoxShadow(
+                            color: GameTheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ] : null,
+                      ),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.all(8),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Image.asset(
+                                  EconomyService.getCardBackAssetPath(product.id),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              decoration: const BoxDecoration(
+                                color: GameTheme.primary,
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(10),
+                                  bottomRight: Radius.circular(10),
+                                ),
+                              ),
+                              child: const Text(
+                                'EQUIPPED',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          else
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                product.name,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, __) => const Text('Error loading selection'),
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => const Text('Error loading inventory'),
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => const Text('Error loading products'),
+    );
+  }
+  
+  Future<void> _selectCardBack(String itemId) async {
+    final success = await EconomyService().setSelectedCardBack(itemId);
+    if (success) {
+      ref.invalidate(selectedCardBackProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Card back updated! 🎴'),
+            backgroundColor: GameTheme.success,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildStatCard({
