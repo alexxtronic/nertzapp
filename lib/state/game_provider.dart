@@ -184,8 +184,13 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     
     // Add bots based on setting (1-3 bots)
     final botNames = ['Bot Dewy', 'Bot Aaron', 'Bot Adam'];
+    final botAvatars = [
+      'https://api.dicebear.com/7.x/avataaars/png?seed=Dewy',
+      'https://api.dicebear.com/7.x/avataaars/png?seed=Aaron',
+      'https://api.dicebear.com/7.x/avataaars/png?seed=Adam',
+    ];
     for (int i = 0; i < botCount; i++) {
-      newState.addPlayer('ai_${i + 1}', botNames[i], isBot: true);
+      newState.addPlayer('ai_${i + 1}', botNames[i], isBot: true, avatarUrl: botAvatars[i]);
     }
     
     // Assign colors for the match (will persist across rounds)

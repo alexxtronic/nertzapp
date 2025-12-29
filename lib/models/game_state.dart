@@ -69,7 +69,7 @@ class GameState {
     );
   }
 
-  void addPlayer(String playerId, String displayName, {bool isBot = false, String? selectedCardBack}) {
+  void addPlayer(String playerId, String displayName, {bool isBot = false, String? selectedCardBack, String? avatarUrl}) {
     if (phase != GamePhase.lobby) {
       throw StateError('Cannot add players during active game');
     }
@@ -86,6 +86,7 @@ class GameState {
       wastePile: WastePile(),
       isBot: isBot,
       selectedCardBack: selectedCardBack,
+      avatarUrl: avatarUrl,
     );
   }
 

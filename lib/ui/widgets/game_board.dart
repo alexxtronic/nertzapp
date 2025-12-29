@@ -523,13 +523,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                         mainAxisAlignment: MainAxisAlignment.center, // Center vertical content
                         children: [
                           _buildHeader(player),
-                          const Spacer(flex: 4), // PUSH OPPONENTS DOWN (More)
+                          const Spacer(flex: 5), // MASSIVE SPACE AT TOP TO COMPRESS MIDDLE
                           _buildOpponentsRow(),
-                          const SizedBox(height: 8), // Tighter to Center Piles
+                          const SizedBox(height: 8), // Tighter to Center
                           _buildCenterArea(),
-                          const Spacer(flex: 1), // Gap between center and work
+                          const SizedBox(height: 16), // Tighter GAP (Work moves UP)
                           _buildWorkPiles(context, player),
-                          const Spacer(flex: 3), // PUSH WORK PILES UP (More away from Hand)
+                          const Spacer(flex: 12), // EVEN MORE SPACE AT BOTTOM (Pushes play area WAY UP)
                           _buildPlayerHand(player),
                           const SizedBox(height: 32), // Keep Stock/Nertz at bottom
                         ],
@@ -1251,16 +1251,18 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
             builder: (context, candidateData, rejectedData) {
               final isHighlighted = candidateData.isNotEmpty;
               return Container(
-                decoration: isHighlighted ? BoxDecoration(
+                width: GameTheme.cardWidth,
+                // Ensure the DragTarget is at least cardHeight + some room
+                constraints: const BoxConstraints(minHeight: GameTheme.cardHeight),
+                decoration: BoxDecoration(
+                  color: isHighlighted 
+                      ? GameTheme.success.withValues(alpha: 0.2) 
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(GameTheme.cardRadius),
-                  boxShadow: [
-                    BoxShadow(
-                      color: GameTheme.success.withValues(alpha: 0.5),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ) : null,
+                  border: isHighlighted 
+                      ? Border.all(color: GameTheme.success, width: 2) 
+                      : null,
+                ),
                 child: _buildWorkPileItem(pile, pileIndex),
               );
             },
@@ -1312,15 +1314,19 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                   data: card,
                   feedback: Material(
                     color: Colors.transparent,
-                    child: Stack(
-                       clipBehavior: Clip.none,
-                       children: List.generate(pile.length - index, (subIndex) {
-                           final subCard = pile.cards[index + subIndex];
-                           return Positioned(
-                             top: subIndex * cascadeOffset,
-                             child: GlassCard(card: subCard),
-                           );
-                       }),
+                    child: SizedBox(
+                      width: GameTheme.cardWidth,
+                      height: GameTheme.cardHeight + ((pile.length - index - 1) * cascadeOffset),
+                      child: Stack(
+                         clipBehavior: Clip.none,
+                         children: List.generate(pile.length - index, (subIndex) {
+                             final subCard = pile.cards[index + subIndex];
+                             return Positioned(
+                               top: subIndex * cascadeOffset,
+                               child: GlassCard(card: subCard),
+                             );
+                         }),
+                      ),
                     ),
                   ),
                   childWhenDragging: Opacity(
