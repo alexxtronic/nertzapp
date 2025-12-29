@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:nertz_royale/services/supabase_service.dart';
 import '../engine/bot_logic.dart';
 
@@ -72,8 +73,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   void _startBotLoop() {
     _botTimer?.cancel();
     debugPrint('🤖 Starting bot loop...');
-    // 1500ms interval = Even slower per user request
-    _botTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
+    // 2100ms interval = 40% slower than previous 1500ms
+    _botTimer = Timer.periodic(const Duration(milliseconds: 2100), (timer) {
       if (state == null || state!.phase != GamePhase.playing) {
         return;
       }
@@ -118,9 +119,29 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     newState.addPlayer('ai_2', 'Bot Bob', isBot: true);
     newState.addPlayer('ai_3', 'Bot Charlie', isBot: true);
     
+    // Assign colors for the match (will persist across rounds)
+    _assignPlayerColors(newState);
+    
     newState.startRound();
     state = newState; // Trigger listeners once
     _startBotLoop();
+  }
+  
+  void _assignPlayerColors(GameState gameState) {
+    final playerIds = gameState.players.keys.toList();
+    final colors = [
+      Color(0xFF2196F3), // Blue
+      Color(0xFFF44336), // Red
+      Color(0xFF4CAF50), // Green
+      Color(0xFFFF9800), // Orange
+    ];
+    
+    for (int i = 0; i < playerIds.length; i++) {
+      final playerId = playerIds[i];
+      final player = gameState.players[playerId]!;
+      final color = colors[i % colors.length];
+      gameState.players[playerId] = player.copyWith(playerColor: color.value);
+    }
   }
   
   void joinGame(String matchId) {

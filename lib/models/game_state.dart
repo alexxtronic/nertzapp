@@ -118,7 +118,12 @@ class GameState {
         isBot: player.isBot,
       );
       newState.scoreTotal = player.scoreTotal;
-      players[player.id] = newState;
+      // Preserve player color across rounds
+      if (player.playerColor != null) {
+        players[player.id] = newState.copyWith(playerColor: player.playerColor);
+      } else {
+        players[player.id] = newState;
+      }
     }
 
     phase = GamePhase.playing;

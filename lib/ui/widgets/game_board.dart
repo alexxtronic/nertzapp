@@ -580,7 +580,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: GameTheme.pillGradient,
                       borderRadius: BorderRadius.circular(30),
@@ -595,20 +595,20 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 18),
-                        const SizedBox(width: 8),
+                        const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
                         Text(
                           '${gameState.countPlayerCardsInCenter(currentPlayerId)} pts',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 14,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   if (gameState.phase == GamePhase.playing && gameState.roundStartTime != null)
                     StreamBuilder(
                       stream: Stream.periodic(const Duration(seconds: 1)),
