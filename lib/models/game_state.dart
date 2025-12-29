@@ -46,7 +46,8 @@ class GameState {
   
   bool get isFull => players.length >= maxPlayers;
 
-  factory GameState.newMatch(String matchId, String hostId, String hostName) {
+
+  factory GameState.newMatch(String matchId, String hostId, String hostName, {String? hostSelectedCardBack}) {
     final hostState = PlayerState(
       id: hostId,
       displayName: hostName,
@@ -54,6 +55,7 @@ class GameState {
       workPiles: [WorkPile(), WorkPile(), WorkPile(), WorkPile()],
       stockPile: StockPile([]),
       wastePile: WastePile(),
+      selectedCardBack: hostSelectedCardBack,
     );
 
     return GameState(
@@ -65,7 +67,7 @@ class GameState {
     );
   }
 
-  void addPlayer(String playerId, String displayName, {bool isBot = false}) {
+  void addPlayer(String playerId, String displayName, {bool isBot = false, String? selectedCardBack}) {
     if (phase != GamePhase.lobby) {
       throw StateError('Cannot add players during active game');
     }
@@ -81,6 +83,7 @@ class GameState {
       stockPile: StockPile([]),
       wastePile: WastePile(),
       isBot: isBot,
+      selectedCardBack: selectedCardBack,
     );
   }
 
@@ -117,7 +120,9 @@ class GameState {
         id: player.id,
         displayName: player.displayName,
         shuffledDeck: deck,
+
         isBot: player.isBot,
+        selectedCardBack: player.selectedCardBack,
       );
       
       // Preserve player color and scoreTotal across rounds
@@ -249,6 +254,11 @@ class GameState {
 
   PlayerState? getPlayer(String id) => players[id];
 
+  /// Get list of opponents (all players except current)
+  List<PlayerState> activeOpponents(String currentPlayerId) {
+    return players.values.where((p) => p.id != currentPlayerId).toList();
+  }
+
   Map<String, dynamic> toJson() => {
     'matchId': matchId,
     'players': players.map((k, v) => MapEntry(k, v.toJson())),
@@ -257,7 +267,6 @@ class GameState {
     'roundNumber': roundNumber,
     'pointsToWin': pointsToWin,
     'hostId': hostId,
-    'roundWinnerId': roundWinnerId,
     'roundWinnerId': roundWinnerId,
     'roundStartTime': roundStartTime?.toIso8601String(),
     'resetVotes': resetVotes.toList(),

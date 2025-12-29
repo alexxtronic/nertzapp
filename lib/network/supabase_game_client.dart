@@ -50,7 +50,7 @@ class SupabaseGameClient {
     onConnectionChanged?.call(false);
   }
   
-  void joinMatch(String matchId) {
+  void joinMatch(String matchId, {String? selectedCardBack}) {
     debugPrint('📡 joinMatch subscribing to channel: game:$matchId');
     if (_channel != null) {
       _channel!.unsubscribe();
@@ -87,7 +87,8 @@ class SupabaseGameClient {
            send(JoinMatchMessage(
              matchId: matchId, 
              playerId: playerId, 
-             displayName: displayName
+             displayName: displayName,
+             selectedCardBack: selectedCardBack,
            ));
         } else if (status == RealtimeSubscribeStatus.closed) {
            _connectionState = ConnectionState.disconnected;

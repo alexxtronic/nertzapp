@@ -17,6 +17,7 @@ import 'package:confetti/confetti.dart';
 import '../../services/audio_service.dart';
 import '../../utils/player_colors.dart';
 import 'settings_dialog.dart';
+import 'package:nertz_royale/ui/widgets/opponent_board.dart';
 
 /// Glassy, rounded card for the new aesthetic
 class GlassCard extends StatelessWidget {
@@ -508,8 +509,9 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                       hasScrollBody: false,
                       child: Column(
                         children: [
+                          _buildOpponentsRow(),
                           _buildHeader(player),
-                          const SizedBox(height: 12), // Fixed small gap
+                          const SizedBox(height: 4), 
                           _buildCenterArea(),
                           const SizedBox(height: 8), // Reduced to shift work piles up
                           _buildWorkPiles(context, player),
@@ -613,27 +615,21 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
 
 
-  Widget _buildResetButton(BuildContext context) {
-    // Check if we have already voted
-    final hasVoted = gameState.resetVotes.contains(currentPlayerId);
-    
-    return Container(
-      margin: const EdgeInsets.only(left: 4),
-      decoration: BoxDecoration(
-        color: hasVoted ? GameTheme.error : GameTheme.background.withValues(alpha: 0.5),
-        shape: BoxShape.circle,
-        border: hasVoted ? Border.all(color: Colors.white, width: 2) : null,
-      ),
-      child: IconButton(
-        icon: Icon(
-          Icons.refresh, 
-          color: hasVoted ? Colors.white : GameTheme.error, 
-          size: 20
-        ),
-        onPressed: hasVoted ? null : widget.onVoteReset,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-        tooltip: hasVoted ? 'Waiting for others...' : 'Vote to Reset Decks',
+  Widget _buildOpponentsRow() {
+    final opponents = gameState.activeOpponents(currentPlayerId);
+    if (opponents.isEmpty) return const SizedBox.shrink();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: opponents.map((player) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: OpponentBoard(player: player),
+          );
+        }).toList(),
       ),
     );
   }
@@ -734,83 +730,20 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               ),
             ),
           
-          // Right: Opponents (Overlapping Avatars)
+          // Right: Settings
           Align(
             alignment: Alignment.centerRight,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ...opponents.take(3).map((opp) {
-                      return Align(
-                        widthFactor: 0.6, // Create overlap
-                        child: Container(
-                          decoration: BoxDecoration(
-                             shape: BoxShape.circle,
-                             // Thin colored border if player has assigned color
-                             border: Border.all(
-                               color: opp.playerColor != null 
-                                   ? PlayerColors.intToColor(opp.playerColor)!
-                                   : GameTheme.background,
-                               width: 3,
-                             ),
-                             color: Colors.white,
-                             boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(2, 2),
-                                )
-                             ]
-                          ),
-                          child: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: Colors.white,
-                            backgroundImage: opp.avatarUrl != null && opp.avatarUrl!.isNotEmpty 
-                                ? NetworkImage(opp.avatarUrl!)
-                                : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
-                            child: null, // No text child needed with image
-                          ),
-                        ),
-                      );
-                    }),
-                    // Add a little padding at the end so the last one isn't clipped by the screen edge visually if margin is used
-                    if (opponents.isNotEmpty) const SizedBox(width: 4),
-                  ],
-                ),
-                // Controls Row
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, right: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                       if (gameState.phase == GamePhase.playing)
-                        _buildResetButton(context),
-                        
-                      // Gear icon
-                      Container(
-                        margin: const EdgeInsets.only(left: 8),
-                        decoration: BoxDecoration(
-                          color: GameTheme.background.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 20),
-                          onPressed: () {
-                            showSettingsDialog(context, onLeaveMatch: widget.onLeaveMatch);
-                          },
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: Container(
+              decoration: BoxDecoration(
+                color: GameTheme.background.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 24),
+                onPressed: () {
+                  showSettingsDialog(context, onLeaveMatch: widget.onLeaveMatch);
+                },
+              ),
             ),
           ),
         ],
@@ -1000,8 +933,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Nertz Pile (Far Left)
-          Column(
+          // Nertz Pile + Stuck Button Group
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Nertz Pile (Far Left)
+              Column(
             children: [
               player.nertzPile.isEmpty
                 ? GestureDetector(
@@ -1095,8 +1033,15 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               const Text("NERTZ", style: TextStyle(
                 color: GameTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold
               )),
-            ],
-          ),
+              ],
+            ),
+            
+            // Stuck Button (Next to Nertz Pile)
+            if (gameState.phase == GamePhase.playing)
+              _buildStuckButton(),
+              
+          ],
+        ),
           
           // Waste + Stock (Right side: Waste left of Stock)
           Row(
@@ -1602,5 +1547,50 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           ),
       ],
     );
+  }
+  Widget _buildStuckButton() {
+     final hasVoted = gameState.resetVotes.contains(currentPlayerId);
+     return GestureDetector(
+       onTap: hasVoted ? null : widget.onVoteReset,
+       child: Container(
+         width: 48,
+         height: 48,
+         margin: const EdgeInsets.only(left: 12, bottom: 20), // Align with cards
+         decoration: BoxDecoration(
+           color: hasVoted ? Colors.grey : const Color(0xFFFF4444),
+           shape: BoxShape.circle,
+           boxShadow: [
+             BoxShadow(
+               color: (hasVoted ? Colors.grey : const Color(0xFFFF4444)).withValues(alpha: 0.4),
+               blurRadius: 8,
+               offset: const Offset(0, 2),
+             ),
+           ],
+           border: Border.all(
+             color: Colors.white.withValues(alpha: 0.3),
+             width: 2,
+           ),
+         ),
+         child: Center(
+           child: hasVoted 
+             ? const Icon(Icons.check, color: Colors.white, size: 24)
+             : const Column(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: [
+                   Text(
+                     'Stuck',
+                     style: TextStyle(
+                       color: Colors.white,
+                       fontSize: 10,
+                       fontWeight: FontWeight.w900,
+                       letterSpacing: 0.5,
+                     ),
+                   ),
+                   Icon(Icons.refresh, color: Colors.white, size: 14),
+                 ],
+               ),
+         ),
+       ),
+     );
   }
 }

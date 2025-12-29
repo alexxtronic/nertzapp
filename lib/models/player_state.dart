@@ -21,6 +21,8 @@ class PlayerState {
   final int wins;
   final bool isBot;
   final int? playerColor; // Stored as ARGB int for JSON serialization
+  final String? selectedCardBack;
+  final DateTime? lastMoveTime;
 
   PlayerState({
     required this.id,
@@ -37,6 +39,8 @@ class PlayerState {
     this.wins = 0,
     this.isBot = false,
     this.playerColor,
+    this.selectedCardBack,
+    this.lastMoveTime,
   });
 
   PlayerRank get rank {
@@ -54,6 +58,7 @@ class PlayerState {
     String? avatarUrl,
     int wins = 0,
     bool isBot = false,
+    String? selectedCardBack,
   }) {
     assert(shuffledDeck.length == 52, 'Deck must have 52 cards');
 
@@ -77,6 +82,7 @@ class PlayerState {
       wins: wins,
       isBot: isBot,
       playerColor: null, // Color assigned later by game logic
+      selectedCardBack: selectedCardBack,
     );
   }
 
@@ -164,6 +170,7 @@ class PlayerState {
     int? wins,
     bool? isBot,
     int? playerColor,
+    DateTime? lastMoveTime,
   }) {
     return PlayerState(
       id: id ?? this.id,
@@ -180,6 +187,8 @@ class PlayerState {
       wins: wins ?? this.wins,
       isBot: isBot ?? this.isBot,
       playerColor: playerColor ?? this.playerColor,
+      lastMoveTime: lastMoveTime ?? this.lastMoveTime,
+      selectedCardBack: selectedCardBack ?? this.selectedCardBack,
     );
   }
 
@@ -198,6 +207,8 @@ class PlayerState {
     'wins': wins,
     'isBot': isBot,
     'playerColor': playerColor,
+    'lastMoveTime': lastMoveTime?.toIso8601String(),
+    'selectedCardBack': selectedCardBack,
   };
 
   factory PlayerState.fromJson(Map<String, dynamic> json) => PlayerState(
@@ -215,6 +226,8 @@ class PlayerState {
     wins: json['wins'] as int? ?? 0,
     isBot: json['isBot'] as bool? ?? false,
     playerColor: json['playerColor'] as int?,
+    lastMoveTime: json['lastMoveTime'] != null ? DateTime.parse(json['lastMoveTime']) : null,
+    selectedCardBack: json['selectedCardBack'] as String?,
   );
 }
 

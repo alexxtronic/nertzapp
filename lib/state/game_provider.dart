@@ -3,12 +3,14 @@
 library;
 
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:nertz_royale/services/supabase_service.dart';
 import 'package:nertz_royale/engine/bot_logic.dart';
 import 'package:nertz_royale/models/bot_difficulty.dart';
 import 'package:nertz_royale/state/bot_difficulty_provider.dart';
+import 'package:nertz_royale/state/economy_provider.dart';
 
 // ... (imports remain)
 
@@ -59,6 +61,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   final SupabaseGameClient client;
   final Ref ref; // Added for accessing bot difficulty
   Timer? _botTimer;
+  final Map<String, DateTime> _botVoteSchedule = {};
+  
   
   GameStateNotifier({
     required this.playerId, 
@@ -94,6 +98,43 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       
       final bots = state!.players.values.where((p) => p.isBot).toList();
       if (bots.isEmpty) return;
+
+      // Check for reset votes and handle bot voting
+      if (state!.resetVotes.isNotEmpty) {
+        for (final bot in bots) {
+          if (!state!.resetVotes.contains(bot.id)) {
+            // Determine reaction time if not already scheduled
+            if (!_botVoteSchedule.containsKey(bot.id)) {
+               final delay = Random().nextInt(16) + 10; // 10-25 seconds
+               _botVoteSchedule[bot.id] = DateTime.now().add(Duration(seconds: delay));
+            }
+            
+            // Check if it's time to vote
+            if (DateTime.now().isAfter(_botVoteSchedule[bot.id]!)) {
+              // Check condition: Has the voting player(s) been inactive for 3 mins?
+              // We check if *any* human voter is "stuck" (inactive > 3 mins)
+              final votingHumans = state!.resetVotes.where((id) => !state!.players[id]!.isBot);
+              final isSomeoneStuck = votingHumans.any((id) {
+                final p = state!.players[id];
+                if (p == null) return false;
+                if (p.lastMoveTime == null) return true; // Never moved
+                return DateTime.now().difference(p.lastMoveTime!).inMinutes >= 3;
+              });
+
+              // If someone is genuinely stuck (or we are stuck), vote YES
+              // Or if we are also stuck
+              final amIStuck = bot.stockPile.isEmpty && bot.wastePile.isEmpty && BotLogic.findBestMove(state!, bot.id) == null;
+              
+              if (isSomeoneStuck || amIStuck) {
+                 executeMove(Move(type: MoveType.voteReset, playerId: bot.id));
+              }
+            }
+          }
+        }
+      } else {
+        // Clear schedule if no votes active
+        _botVoteSchedule.clear();
+      }
       
       for (final bot in bots) {
         // 1. Try to find a move
@@ -110,11 +151,11 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         } else {
           // 2. If no move...
           
-          // Check if we should vote for reset (if stock/waste empty and no moves)
+          // Check if we should vote for reset independently (if stock/waste empty and no moves)
+          // This logic now supplements the "agreeing" logic above
           if (!state!.resetVotes.contains(bot.id)) {
              if (bot.stockPile.isEmpty && bot.wastePile.isEmpty) {
                 // Determine if we are genuinely stuck (no moves at all)
-                // Since findBestMove returned null, we effectively have no moves to center/work.
                 executeMove(Move(type: MoveType.voteReset, playerId: bot.id));
              }
           }
@@ -172,9 +213,18 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     }
   }
   
-  void joinGame(String matchId) {
+  void joinGame(String matchId) async {
     debugPrint('🌐 joinGame called with matchId: $matchId');
-    client.joinMatch(matchId);
+    
+    // Fetch card back
+    String? cardBack;
+    try {
+      cardBack = await ref.read(selectedCardBackProvider.future);
+    } catch (e) {
+      debugPrint('⚠️ Failed to fetch card back: $e');
+    }
+    
+    client.joinMatch(matchId, selectedCardBack: cardBack);
     
     // Send immediate request after a short delay for channel to establish
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -200,7 +250,16 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     // For P2P, host uses provided code or generates one
     final id = matchId ?? SupabaseGameClient.generateMatchId();
     debugPrint('🏠 hostGame called. Using matchId: $id');
-    state = GameState.newMatch(id, playerId, playerName);
+    
+    // Fetch card back
+    String? cardBack;
+    try {
+      cardBack = await ref.read(selectedCardBackProvider.future);
+    } catch (e) {
+      debugPrint('⚠️ Failed to fetch card back: $e');
+    }
+
+    state = GameState.newMatch(id, playerId, playerName, hostSelectedCardBack: cardBack);
     debugPrint('🏠 GameState created. hostId: ${state!.hostId}');
     joinGame(id);
   }
@@ -269,6 +328,15 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     
     // Execute locally (optimistic)
     final result = GameEngine.executeMove(move, state!);
+    
+    // Update lastMoveTime if it's a gameplay move
+    if (state != null && state!.players.containsKey(move.playerId)) {
+       final type = move.type;
+       if (type != MoveType.voteReset && type != MoveType.callNertz) {
+          final p = state!.players[move.playerId]!;
+          state!.players[move.playerId] = p.copyWith(lastMoveTime: DateTime.now());
+       }
+    }
     
     if (result.roundEnded && result.roundWinnerId != null) {
       GameEngine.endRound(state!, result.roundWinnerId!);
