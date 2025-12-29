@@ -61,8 +61,8 @@ class GameState {
     return GameState(
       matchId: matchId,
       players: {hostId: hostState},
-      // 16 generic center pile slots
-      centerPiles: List.generate(16, (_) => CenterPile()),
+      // 18 generic center pile slots (3 rows of 6)
+      centerPiles: List.generate(18, (_) => CenterPile()),
       hostId: hostId,
     );
   }

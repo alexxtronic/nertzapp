@@ -752,8 +752,9 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   Widget _buildCenterArea() {
     // 5% larger than before (was 84%, now 89% of normal)
-    const double miniCardWidth = GameTheme.cardWidth * 0.89;
-    const double miniCardHeight = GameTheme.cardHeight * 0.89;
+    // Scaled for 6 columns (was 0.89 for 4 cols)
+    const double miniCardWidth = GameTheme.cardWidth * 0.70;
+    const double miniCardHeight = GameTheme.cardHeight * 0.70;
     
     // Circular layout for 16 cards
     // Positions arranged in concentric arcs
@@ -777,7 +778,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               ),
               const Spacer(),
               Text(
-                '${gameState.centerPiles.where((p) => !p.isEmpty).length}/16',
+                '${gameState.centerPiles.where((p) => !p.isEmpty).length}/18',
                 style: TextStyle(
                   color: GameTheme.textSecondary.withValues(alpha: 0.6),
                   fontSize: 10,
@@ -787,16 +788,16 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 4),
-        // Simple 4x4 grid layout (4 rows of 4 cards)
-        for (int row = 0; row < 4; row++)
+        // Simple 3x6 grid layout (3 rows of 6 cards)
+        for (int row = 0; row < 3; row++)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(4, (col) {
-                final index = row * 4 + col;
+              children: List.generate(6, (col) {
+                final index = row * 6 + col;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: _buildCenterPileSlot(index, miniCardWidth, miniCardHeight),
                 );
               }),
