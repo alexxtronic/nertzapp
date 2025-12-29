@@ -509,13 +509,12 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                       hasScrollBody: false,
                       child: Column(
                         children: [
-                          _buildOpponentsRow(),
                           _buildHeader(player),
-                          const SizedBox(height: 4), 
+                          _buildOpponentsRow(),
                           _buildCenterArea(),
-                          const SizedBox(height: 8), // Reduced to shift work piles up
+                          const SizedBox(height: 4),
                           _buildWorkPiles(context, player),
-                          const SizedBox(height: 24), // Space between Work and Hand
+                          const SizedBox(height: 12),
                           _buildPlayerHand(player),
                           const SizedBox(height: 16),
                         ],
@@ -621,7 +620,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: opponents.map((player) {
@@ -761,7 +760,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     return Column(
       children: [
         // Shift down by card height
-        SizedBox(height: GameTheme.cardHeight * 0.3),
+        // SizedBox(height: GameTheme.cardHeight * 0.3),
+        const SizedBox(height: 4),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
@@ -786,11 +786,11 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         // Simple 4x4 grid layout (4 rows of 4 cards)
         for (int row = 0; row < 4; row++)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(4, (col) {

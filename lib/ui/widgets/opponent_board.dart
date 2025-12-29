@@ -15,83 +15,100 @@ class OpponentBoard extends StatelessWidget {
         ? EconomyService.getCardBackAssetPath(player.selectedCardBack!)
         : 'assets/card_back.png'; // Default
 
-    return Container(
-      width: 80, // Compact width
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Avatar
-          Container(
-             width: 40,
-             height: 40,
-             decoration: BoxDecoration(
-               shape: BoxShape.circle,
-               border: Border.all(color: Colors.white, width: 2),
-               image: player.avatarUrl != null 
-                  ? DecorationImage(image: NetworkImage(player.avatarUrl!), fit: BoxFit.cover)
-                  : null,
-               color: Color(player.playerColor ?? 0xFF2196F3),
-             ),
-             child: player.avatarUrl == null 
-               ? Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))
-               : null,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Name on top, very small
+        Text(
+          player.displayName,
+          style: TextStyle(
+            color: GameTheme.textSecondary.withValues(alpha: 0.8),
+            fontSize: 9, 
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 2),
-          // Name
-          Text(
-            player.displayName,
-            style: const TextStyle(
-              color: GameTheme.textSecondary,
-              fontSize: 10, 
-              fontWeight: FontWeight.bold,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-          const SizedBox(height: 4),
-          // Nertz Pile (Back)
-          Stack(
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
+        const SizedBox(height: 2),
+        // Overlapping Stack
+        SizedBox(
+          width: 60, 
+          height: 55, 
+          child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Container(
-                width: 45,
-                height: 65, // Scaled down card
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black38, blurRadius: 3, offset: Offset(1, 1)),
-                  ],
-                  image: DecorationImage(
-                    image: AssetImage(cardBackAsset),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              // Count Badge
+              // Nertz Pile (Card) - Shifted Right and Top
               Positioned(
-                bottom: -6,
-                right: -6,
+                right: 0,
+                top: 0,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: GameTheme.accent,
-                    shape: BoxShape.circle,
+                  width: 35,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(1, 1)),
+                    ],
+                    image: DecorationImage(
+                      image: AssetImage(cardBackAsset),
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                  child: Text(
-                    '${player.nertzPile.remaining}',
-                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${player.nertzPile.remaining}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
+              // Avatar - Bottom Left, overlapping
+              Positioned(
+                left: 0,
+                bottom: 0,
+                child: Container(
+                   width: 32,
+                   height: 32,
+                   decoration: BoxDecoration(
+                     shape: BoxShape.circle,
+                     border: Border.all(
+                       color: player.playerColor != null 
+                          ? Color(player.playerColor!) 
+                          : Colors.white, 
+                       width: 2
+                     ),
+                     image: player.avatarUrl != null 
+                        ? DecorationImage(image: NetworkImage(player.avatarUrl!), fit: BoxFit.cover)
+                        : null,
+                     color: GameTheme.surface,
+                     boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                     ],
+                   ),
+                   child: player.avatarUrl == null 
+                     ? Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)))
+                     : null,
+                ),
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
