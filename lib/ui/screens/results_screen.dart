@@ -281,7 +281,16 @@ class ResultsScreen extends ConsumerWidget {
               onPressed: () {
                 ref.read(gameStateProvider.notifier).reset();
                 Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LobbyScreen()),
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      return FadeTransition(
+                        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                        child: child,
+                      );
+                    },
+                    transitionDuration: const Duration(milliseconds: 300),
+                  ),
                   (route) => false,
                 );
               },
@@ -297,7 +306,16 @@ class ResultsScreen extends ConsumerWidget {
               onPressed: () {
                 ref.read(gameStateProvider.notifier).createLocalGame();
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const GameScreen()),
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => const GameScreen(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      return FadeTransition(
+                        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                        child: child,
+                      );
+                    },
+                    transitionDuration: const Duration(milliseconds: 300),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(

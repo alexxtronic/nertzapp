@@ -147,7 +147,16 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
 
   void _goToResults() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const ResultsScreen()),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const ResultsScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
     );
   }
 
@@ -220,7 +229,16 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
             onPressed: () {
               ref.read(gameStateProvider.notifier).reset();
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LobbyScreen()),
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                      child: child,
+                    );
+                  },
+                  transitionDuration: const Duration(milliseconds: 300),
+                ),
                 (route) => false,
               );
             },

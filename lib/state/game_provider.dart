@@ -122,9 +122,9 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     final newState = GameState.newMatch(matchId, playerId, playerName);
     
     // Add 3 bots for a full 4-player game
-    newState.addPlayer('ai_1', 'Bot Alice', isBot: true);
-    newState.addPlayer('ai_2', 'Bot Bob', isBot: true);
-    newState.addPlayer('ai_3', 'Bot Charlie', isBot: true);
+    newState.addPlayer('ai_1', 'Bot Dewy', isBot: true);
+    newState.addPlayer('ai_2', 'Bot Aaron', isBot: true);
+    newState.addPlayer('ai_3', 'Bot Adam', isBot: true);
     
     // Assign colors for the match (will persist across rounds)
     _assignPlayerColors(newState);
