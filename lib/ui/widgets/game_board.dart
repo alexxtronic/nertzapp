@@ -233,6 +233,7 @@ class GameBoard extends StatefulWidget {
   final Function(PlayingCard)? onCardDoubleTap;
   final VoidCallback? onCenterPilePlaced;
   final VoidCallback? onLeaveMatch;
+  final VoidCallback? onVoteReset;
   
   const GameBoard({
     super.key,
@@ -244,6 +245,7 @@ class GameBoard extends StatefulWidget {
     this.onCardDoubleTap,
     this.onCenterPilePlaced,
     this.onLeaveMatch,
+    this.onVoteReset,
   });
 
   @override
@@ -532,7 +534,53 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                 createParticlePath: drawStar, 
               ),
             ),
+            _buildVoteBanner(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVoteBanner() {
+    if (gameState.resetVotes.isEmpty) return const SizedBox.shrink();
+    
+    return Positioned(
+      bottom: 150, // Positioned above player hand
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: GameTheme.error.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: GameTheme.softShadow,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'VOTE FOR RESET',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(width: 8),
+              ...gameState.players.keys.map((pid) {
+                 final voted = gameState.resetVotes.contains(pid);
+                 return Padding(
+                   padding: const EdgeInsets.symmetric(horizontal: 2),
+                   child: Icon(
+                     voted ? Icons.check_circle : Icons.radio_button_unchecked,
+                     color: Colors.white,
+                     size: 16,
+                   ),
+                 );
+               }),
+            ],
+          ),
         ),
       ),
     );
@@ -561,6 +609,33 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
     path.close();
     return path;
+  }
+
+
+
+  Widget _buildResetButton(BuildContext context) {
+    // Check if we have already voted
+    final hasVoted = gameState.resetVotes.contains(currentPlayerId);
+    
+    return Container(
+      margin: const EdgeInsets.only(left: 4),
+      decoration: BoxDecoration(
+        color: hasVoted ? GameTheme.error : GameTheme.background.withValues(alpha: 0.5),
+        shape: BoxShape.circle,
+        border: hasVoted ? Border.all(color: Colors.white, width: 2) : null,
+      ),
+      child: IconButton(
+        icon: Icon(
+          Icons.refresh, 
+          color: hasVoted ? Colors.white : GameTheme.error, 
+          size: 20
+        ),
+        onPressed: hasVoted ? null : widget.onVoteReset,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        tooltip: hasVoted ? 'Waiting for others...' : 'Vote to Reset Decks',
+      ),
+    );
   }
 
   Widget _buildHeader(PlayerState player) {
@@ -662,60 +737,77 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           // Right: Opponents (Overlapping Avatars)
           Align(
             alignment: Alignment.centerRight,
-            child: Row(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                ...opponents.take(3).map((opp) {
-                  return Align(
-                    widthFactor: 0.6, // Create overlap
-                    child: Container(
-                      decoration: BoxDecoration(
-                         shape: BoxShape.circle,
-                         // Thin colored border if player has assigned color
-                         border: Border.all(
-                           color: opp.playerColor != null 
-                               ? PlayerColors.intToColor(opp.playerColor)!
-                               : GameTheme.background,
-                           width: 3,
-                         ),
-                         color: Colors.white,
-                         boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 4,
-                              offset: const Offset(2, 2),
-                            )
-                         ]
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ...opponents.take(3).map((opp) {
+                      return Align(
+                        widthFactor: 0.6, // Create overlap
+                        child: Container(
+                          decoration: BoxDecoration(
+                             shape: BoxShape.circle,
+                             // Thin colored border if player has assigned color
+                             border: Border.all(
+                               color: opp.playerColor != null 
+                                   ? PlayerColors.intToColor(opp.playerColor)!
+                                   : GameTheme.background,
+                               width: 3,
+                             ),
+                             color: Colors.white,
+                             boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(2, 2),
+                                )
+                             ]
+                          ),
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.white,
+                            backgroundImage: opp.avatarUrl != null && opp.avatarUrl!.isNotEmpty 
+                                ? NetworkImage(opp.avatarUrl!)
+                                : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                            child: null, // No text child needed with image
+                          ),
+                        ),
+                      );
+                    }),
+                    // Add a little padding at the end so the last one isn't clipped by the screen edge visually if margin is used
+                    if (opponents.isNotEmpty) const SizedBox(width: 4),
+                  ],
+                ),
+                // Controls Row
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, right: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                       if (gameState.phase == GamePhase.playing)
+                        _buildResetButton(context),
+                        
+                      // Gear icon
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        decoration: BoxDecoration(
+                          color: GameTheme.background.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 20),
+                          onPressed: () {
+                            showSettingsDialog(context, onLeaveMatch: widget.onLeaveMatch);
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        ),
                       ),
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: Colors.white,
-                        backgroundImage: opp.avatarUrl != null && opp.avatarUrl!.isNotEmpty 
-                            ? NetworkImage(opp.avatarUrl!)
-                            : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
-                        child: null, // No text child needed with image
-                      ),
-                    ),
-                  );
-                }),
-                // Add a little padding at the end so the last one isn't clipped by the screen edge visually if margin is used
-                if (opponents.isNotEmpty) const SizedBox(width: 4),
-                
-                // Gear icon positioned below player bubbles
-                Container(
-                  margin: const EdgeInsets.only(left: 4),
-                  decoration: BoxDecoration(
-                    color: GameTheme.background.withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 20),
-                    onPressed: () {
-                      showSettingsDialog(context, onLeaveMatch: widget.onLeaveMatch);
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ],
                   ),
                 ),
               ],
@@ -1450,102 +1542,30 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       text = "NERTZ!";
     }
     
-    return Container(
-      color: Colors.black.withValues(alpha: 0.85),
-      child: Stack(
-        children: [
-          // Card dealing animation in background
-          Center(
-            child: SizedBox(
-              width: 300,
-              height: 200,
-              child: Stack(
-                children: [
-                  // Deck on left side
-                  Positioned(
-                    left: 20,
-                    top: 50,
-                    child: _buildAnimatedDeck(),
-                  ),
-                  // Dealt cards flying to right
-                  for (int i = 0; i < _cardAnimations.length; i++)
-                    if (_cardAnimations[i] > 0)
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOut,
-                        left: 20 + (_cardAnimations[i] * 180),
-                        top: 50 + (i * 2.0),
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 150),
-                          opacity: _cardAnimations[i],
-                          child: Transform.rotate(
-                            angle: (i - 6) * 0.03,
-                            child: Container(
-                              width: 50,
-                              height: 70,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: GameTheme.primary.withValues(alpha: 0.5)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 4,
-                                    offset: const Offset(2, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${13 - i}',
-                                  style: TextStyle(
-                                    color: GameTheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+    // Simplified overlay: Just the text, centered, with no background
+    return Center(
+      child: TweenAnimationBuilder<double>(
+        key: ValueKey(_countdownValue),
+        tween: Tween(begin: 0.5, end: 1.0),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.elasticOut,
+        builder: (context, value, child) {
+          return Transform.scale(
+            scale: value,
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 100,
+                fontWeight: FontWeight.w900,
+                shadows: [
+                  Shadow(color: Colors.black, blurRadius: 15, offset: Offset(4, 4)),
+                  Shadow(color: GameTheme.primary, blurRadius: 30),
                 ],
               ),
             ),
-          ),
-          // Countdown number/text overlaid
-          Center(
-            child: TweenAnimationBuilder<double>(
-              key: ValueKey(_countdownValue),
-              tween: Tween(begin: 0.5, end: 1.0),
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.elasticOut,
-              builder: (context, value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      text,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 80,
-                        fontWeight: FontWeight.w900,
-                        shadows: [
-                          Shadow(color: GameTheme.primary, blurRadius: 20),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

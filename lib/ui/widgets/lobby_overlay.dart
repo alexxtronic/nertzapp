@@ -9,11 +9,13 @@ import '../../services/supabase_service.dart'; // Added this import for Supabase
 class LobbyOverlay extends ConsumerStatefulWidget {
   final String matchId;
   final bool isHost;
+  final VoidCallback? onClose;
   
   const LobbyOverlay({
     super.key,
     required this.matchId,
     required this.isHost,
+    this.onClose,
   });
 
   @override
@@ -46,13 +48,15 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
               width: 400,
               padding: const EdgeInsets.all(32),
               decoration: GameTheme.glassDecoration,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Stack(
                 children: [
-                  const Text(
-                    'LOBBY',
-                    style: GameTheme.h1,
-                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'LOBBY',
+                        style: GameTheme.h1,
+                      ),
                   const SizedBox(height: 24),
                   
                   // Match Code
@@ -192,6 +196,16 @@ class _LobbyOverlayState extends ConsumerState<LobbyOverlay> {
                     ),
                 ],
               ),
+              Positioned(
+                right: 0,
+                top: 0,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: GameTheme.textPrimary),
+                  onPressed: widget.onClose,
+                ),
+              ),
+            ],
+          ),
             ),
           ),
         ),

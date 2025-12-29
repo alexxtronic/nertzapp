@@ -51,6 +51,8 @@ class GameEngine {
         return _executeMoveStack(move, player);
       case MoveType.callNertz:
         return _executeCallNertz(player);
+      case MoveType.voteReset:
+        return _executeVoteReset(move, player, gameState);
     }
   }
 
@@ -131,6 +133,11 @@ class GameEngine {
       return ExecutionResult.success(roundEnded: true, winnerId: player.id);
     }
     return ExecutionResult.failure('Nertz pile not empty');
+  }
+
+  static ExecutionResult _executeVoteReset(Move move, PlayerState player, GameState gameState) {
+    gameState.voteForReset(player.id);
+    return ExecutionResult.success();
   }
 
   static void setupRound(GameState gameState) {

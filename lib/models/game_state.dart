@@ -29,6 +29,7 @@ class GameState {
   String? hostId;
   String? roundWinnerId;
   DateTime? roundStartTime;
+  Set<String> resetVotes;
 
   GameState({
     required this.matchId,
@@ -40,6 +41,7 @@ class GameState {
     this.hostId,
     this.roundWinnerId,
     this.roundStartTime,
+    this.resetVotes = const {},
   });
   
   bool get isFull => players.length >= maxPlayers;
@@ -149,6 +151,26 @@ class GameState {
     }
   }
 
+  void voteForReset(String playerId) {
+    if (players.containsKey(playerId)) {
+      resetVotes.add(playerId);
+    }
+  }
+  
+  void clearResetVotes() {
+    resetVotes.clear();
+  }
+  
+  bool get hasUnanimousResetVote => 
+      players.isNotEmpty && resetVotes.length == players.length;
+  
+  void executeReset() {
+    for (final key in players.keys) {
+      players[key] = players[key]!.resetStockAndWaste();
+    }
+    clearResetVotes();
+  }
+
   /// Find a center pile that can accept this card
   /// Returns the pile index, or -1 if no pile can accept it
   int findCenterPileFor(PlayingCard card) {
@@ -236,7 +258,9 @@ class GameState {
     'pointsToWin': pointsToWin,
     'hostId': hostId,
     'roundWinnerId': roundWinnerId,
+    'roundWinnerId': roundWinnerId,
     'roundStartTime': roundStartTime?.toIso8601String(),
+    'resetVotes': resetVotes.toList(),
   };
 
   factory GameState.fromJson(Map<String, dynamic> json) {
@@ -259,6 +283,7 @@ class GameState {
       roundStartTime: json['roundStartTime'] != null 
         ? DateTime.parse(json['roundStartTime']) 
         : null,
+      resetVotes: (json['resetVotes'] as List?)?.map((e) => e as String).toSet() ?? {},
     );
   }
 }

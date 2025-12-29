@@ -14,6 +14,7 @@ enum MoveType {
   moveStack,
   drawOne,
   callNertz,
+  voteReset,
 }
 
 /// Represents a move request
@@ -101,6 +102,8 @@ class MoveValidator {
         return _validateMoveStack(move, player);
       case MoveType.callNertz:
         return _validateCallNertz(move, player);
+      case MoveType.voteReset:
+        return MoveResult.valid(move); // Always valid locally
     }
   }
 

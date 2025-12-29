@@ -315,6 +315,10 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
                 selectedCardBack: cardBackAsset,
                 onMove: _handleMove,
                 onCenterPilePlaced: _showPlusOneAnimation,
+                onVoteReset: () {
+                   HapticFeedback.mediumImpact();
+                   ref.read(gameStateProvider.notifier).voteForReset();
+                },
                 onLeaveMatch: () {
                   ref.read(gameStateProvider.notifier).reset();
                   Navigator.of(context).pushAndRemoveUntil(
@@ -339,7 +343,23 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
           if (gameState.phase == GamePhase.lobby)
              LobbyOverlay(
                 matchId: gameState.matchId, 
-                isHost: gameState.hostId == playerId
+                isHost: gameState.hostId == playerId,
+                onClose: () {
+                  ref.read(gameStateProvider.notifier).reset();
+                  Navigator.of(context).pushAndRemoveUntil(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(
+                          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                          child: child,
+                        );
+                      },
+                      transitionDuration: const Duration(milliseconds: 300),
+                    ),
+                    (route) => false,
+                  );
+                },
              ),
 
           // Floating +1 animations

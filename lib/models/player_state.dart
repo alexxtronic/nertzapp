@@ -80,6 +80,17 @@ class PlayerState {
     );
   }
 
+  /// Combine Stock and Waste, shuffle, and reset to Stock
+  PlayerState resetStockAndWaste() {
+    final allCards = [...stockPile.cards, ...wastePile.cards];
+    allCards.shuffle(); 
+    
+    return copyWith(
+      stockPile: StockPile(allCards),
+      wastePile: WastePile(),
+    );
+  }
+
   bool get hasEmptiedNertz => nertzPile.isEmpty;
 
   int calculateRoundScore(int cardsPlayedToCenter) {

@@ -108,9 +108,22 @@ class GameStateNotifier extends StateNotifier<GameState?> {
             executeMove(Move(type: MoveType.callNertz, playerId: bot.id));
           }
         } else {
-          // 2. If no move, draw cards more frequently (every other tick)
-          if (DateTime.now().millisecondsSinceEpoch % 2 == 0) {
-             drawThree(bot.id);
+          // 2. If no move...
+          
+          // Check if we should vote for reset (if stock/waste empty and no moves)
+          if (!state!.resetVotes.contains(bot.id)) {
+             if (bot.stockPile.isEmpty && bot.wastePile.isEmpty) {
+                // Determine if we are genuinely stuck (no moves at all)
+                // Since findBestMove returned null, we effectively have no moves to center/work.
+                executeMove(Move(type: MoveType.voteReset, playerId: bot.id));
+             }
+          }
+
+          // Draw cards logic (if not empty)
+          if (!(bot.stockPile.isEmpty && bot.wastePile.isEmpty)) {
+             if (DateTime.now().millisecondsSinceEpoch % 2 == 0) {
+               drawThree(bot.id);
+             }
           }
         }
       }
@@ -267,6 +280,16 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       }
     }
     
+    // Special handling for Vote Reset (Host Only)
+    if (move.type == MoveType.voteReset && 
+        state!.hostId == playerId && 
+        state!.hasUnanimousResetVote) {
+      debugPrint('🔄 Unanimous vote! Resetting decks...');
+      state!.executeReset();
+      // Important: Broadcast the new randomized state immediately
+      client.send(StateSnapshotMessage(gameState: state!));
+    }
+    
     // Send to network
     client.sendMove(move);
     
@@ -287,6 +310,13 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   void drawOne(String playerId) {
     executeMove(Move(
       type: MoveType.drawOne,
+      playerId: playerId,
+    ));
+  }
+
+  void voteForReset() {
+    executeMove(Move(
+      type: MoveType.voteReset,
       playerId: playerId,
     ));
   }
