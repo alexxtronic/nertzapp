@@ -133,19 +133,21 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
       AudioService().playWinner();
     }
     
-    // Award coins for positive round score (only if online)
-    final currentPlayer = gameState.players[currentPlayerId];
-    if (currentPlayer != null && currentPlayer.scoreThisRound > 0) {
-      final coinsEarned = EconomyService.calculateCoinsEarned(currentPlayer.scoreThisRound);
-      if (coinsEarned > 0 && EconomyService().isOnline) {
-        EconomyService().awardCoins(
-          amount: coinsEarned,
-          source: 'game_reward',
-          referenceId: gameState.matchId,
-        ).then((_) {
-          // Refresh balance in providers
-          ref.invalidate(balanceProvider);
-        });
+    // Award coins ONLY at match end, based on total score (1 coin per 10 points)
+    if (gameState.phase == GamePhase.matchEnd) {
+      final currentPlayer = gameState.players[currentPlayerId];
+      if (currentPlayer != null && currentPlayer.scoreTotal > 0) {
+        final coinsEarned = EconomyService.calculateCoinsEarned(currentPlayer.scoreTotal);
+        if (coinsEarned > 0 && EconomyService().isOnline) {
+          EconomyService().awardCoins(
+            amount: coinsEarned,
+            source: 'game_reward',
+            referenceId: gameState.matchId,
+          ).then((_) {
+            // Refresh balance in providers
+            ref.invalidate(balanceProvider);
+          });
+        }
       }
     }
     
