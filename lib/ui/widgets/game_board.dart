@@ -520,15 +520,17 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                     SliverFillRemaining(
                       hasScrollBody: false,
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center, // Center vertical content
                         children: [
                           _buildHeader(player),
                           _buildOpponentsRow(),
+                          const Spacer(flex: 2), // Push content down to center
                           _buildCenterArea(),
-                          const SizedBox(height: 12),
+                          const Spacer(flex: 1), // Gap between center and work
                           _buildWorkPiles(context, player),
-                          const Spacer(), // Push Hand to bottom
+                          const SizedBox(height: 8), // Tight gap to hand
                           _buildPlayerHand(player),
-                          const SizedBox(height: 32), // Bottom padding for thumbs
+                          const SizedBox(height: 24), // Bottom padding
                         ],
                       ),
                     ),
@@ -956,119 +958,127 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start, // Align tops (prevent shifting when bottom expands)
         children: [
           // Nertz Pile + Stuck Button Group
-          Row(
+          Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Nertz Pile (Far Left)
-              Column(
-            children: [
-              player.nertzPile.isEmpty
-                ? GestureDetector(
-                    onTap: () {
-                      HapticFeedback.heavyImpact(); // Strong haptics
-                      AudioService().playExplosion();
-                      AudioService().playApplause();
-                      _confettiController.play();
-                      
-                      onMove?.call(Move(
-                        type: MoveType.callNertz, 
-                        playerId: currentPlayerId
-                      ));
-                    },
-                    child: Container(
-                      width: GameTheme.cardWidth,
-                      height: GameTheme.cardHeight,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: GameTheme.primary.withValues(alpha: 0.5),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          )
-                        ]
-                      ),
-                      child: Image.asset('assets/nertz_button.png'),
-                    ),
-                  )
-                : Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(GameTheme.cardRadius),
-                          // Add player color glow
-                          boxShadow: [
-                            if (player.playerColor != null)
-                              BoxShadow(
-                                color: (PlayerColors.intToColor(player.playerColor) ?? Colors.grey).withValues(alpha: 0.5),
-                                blurRadius: 16,
-                                spreadRadius: 4,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end, // Helper button at bottom aligned with Nertz label? Or center?
+                // Let's use End to align with Nertz label
+                children: [
+                   Column(
+                     children: [
+                        player.nertzPile.isEmpty
+                          ? GestureDetector(
+                              onTap: () {
+                                HapticFeedback.heavyImpact(); // Strong haptics
+                                AudioService().playExplosion();
+                                AudioService().playApplause();
+                                _confettiController.play();
+                                
+                                onMove?.call(Move(
+                                  type: MoveType.callNertz, 
+                                  playerId: currentPlayerId
+                                ));
+                              },
+                              child: Container(
+                                width: GameTheme.cardWidth,
+                                height: GameTheme.cardHeight,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: GameTheme.primary.withValues(alpha: 0.5),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    )
+                                  ]
+                                ),
+                                child: Image.asset('assets/nertz_button.png'),
                               ),
-                            ...GameTheme.softShadow,
-                          ],
-                        ),
-                        child: Draggable<PlayingCard>(
-                          data: player.nertzPile.cards.last,
-                          feedback: Material(
-                            color: Colors.transparent,
-                            child: Transform.scale(
-                              scale: 1.1,
-                              child: GlassCard(card: player.nertzPile.cards.last),
+                            )
+                          : Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+                                    // Add player color glow
+                                    boxShadow: [
+                                      if (player.playerColor != null)
+                                        BoxShadow(
+                                          color: (PlayerColors.intToColor(player.playerColor) ?? Colors.grey).withValues(alpha: 0.5),
+                                          blurRadius: 16,
+                                          spreadRadius: 4,
+                                        ),
+                                      ...GameTheme.softShadow,
+                                    ],
+                                  ),
+                                  child: Draggable<PlayingCard>(
+                                    data: player.nertzPile.cards.last,
+                                    feedback: Material(
+                                      color: Colors.transparent,
+                                      child: Transform.scale(
+                                        scale: 1.1,
+                                        child: GlassCard(card: player.nertzPile.cards.last),
+                                      ),
+                                    ),
+                                    childWhenDragging: Opacity(
+                                      opacity: 0.3,
+                                      child: GlassCard(card: player.nertzPile.cards.last),
+                                    ),
+                                    child: GlassCard(card: player.nertzPile.cards.last),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: -10,
+                                  right: -10,
+                                  child: Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: GameTheme.primary,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 2),
+                                      boxShadow: GameTheme.softShadow,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${player.nertzPile.remaining}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          childWhenDragging: Opacity(
-                            opacity: 0.3,
-                            child: GlassCard(card: player.nertzPile.cards.last),
-                          ),
-                          child: GlassCard(card: player.nertzPile.cards.last),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: -10,
-                        right: -10,
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: GameTheme.primary,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: GameTheme.softShadow,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${player.nertzPile.remaining}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text("NERTZ", style: TextStyle(
-                    color: GameTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold
-                  )), 
-                
-                // Stuck Button (Next to Nertz Pile)
-                if (gameState.phase == GamePhase.playing)
-                  _buildStuckButton(),
-
-              ],
-            ),
-            
-            // Reset Status area (below the functional area)
-            _buildResetStatus(),
-          ],
-        ),
+                            const SizedBox(height: 8),
+                            const Text("NERTZ", style: TextStyle(
+                              color: GameTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold
+                            )), 
+                     ],
+                   ),
+                   
+                   // Stuck Button (To the RIGHT of Nertz Pile)
+                   if (gameState.phase == GamePhase.playing) ...[
+                      const SizedBox(width: 8), // Spacing
+                      _buildStuckButton(),
+                   ],
+                ],
+              ),
+              
+              // Reset Status area (below the functional area)
+              _buildResetStatus(),
+            ],
+          ),
           
           // Waste + Stock (Right side: Waste left of Stock)
           Row(
@@ -1266,7 +1276,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
     
     // Condensed cascade view with Stack Dragging Support
-    const double cascadeOffset = 18.0;
+    // Scale down offset to show only a slice (header) of buried cards
+    const double cascadeOffset = 12.0;
     
     // Calculate total height to ensure SizedBox is large enough
     double totalHeight = GameTheme.cardHeight + ((pile.length - 1) * cascadeOffset);
