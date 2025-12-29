@@ -103,15 +103,7 @@ class OpponentBoard extends StatelessWidget {
                      ],
                    ),
                    child: ClipOval(
-                     child: player.avatarUrl != null 
-                       ? Image.network(
-                           player.avatarUrl!,
-                           fit: BoxFit.cover,
-                           errorBuilder: (context, error, stackTrace) {
-                              return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)));
-                           },
-                         )
-                       : Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14))),
+                     child: _buildAvatar(player),
                    ),
                 ),
               ),
@@ -119,6 +111,31 @@ class OpponentBoard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAvatar(PlayerState player) {
+    if (player.avatarUrl == null || player.avatarUrl!.isEmpty) {
+      return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)));
+    }
+
+    // Check if it's a local asset (bots often use assets)
+    if (player.avatarUrl!.startsWith('assets/') || !player.avatarUrl!.startsWith('http')) {
+       return Image.asset(
+         player.avatarUrl!,
+         fit: BoxFit.cover,
+         errorBuilder: (context, error, stackTrace) {
+            return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)));
+         },
+       );
+    }
+
+    return Image.network(
+      player.avatarUrl!,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+         return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)));
+      },
     );
   }
 }

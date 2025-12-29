@@ -523,14 +523,15 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                         mainAxisAlignment: MainAxisAlignment.center, // Center vertical content
                         children: [
                           _buildHeader(player),
+                          const Spacer(flex: 3), // PUSH OPPONENTS DOWN
                           _buildOpponentsRow(),
-                          const Spacer(flex: 2), // Push content down to center
+                          const SizedBox(height: 16), // Closer to Center Piles
                           _buildCenterArea(),
                           const Spacer(flex: 1), // Gap between center and work
                           _buildWorkPiles(context, player),
-                          const SizedBox(height: 8), // Tight gap to hand
+                          const Spacer(flex: 2), // PUSH WORK PILES UP (away from Hand)
                           _buildPlayerHand(player),
-                          const SizedBox(height: 24), // Bottom padding
+                          const SizedBox(height: 32), // Keep Stock/Nertz at bottom
                         ],
                       ),
                     ),
@@ -549,7 +550,6 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                 createParticlePath: drawStar, 
               ),
             ),
-            _buildResetStatus(),
           ],
         ),
       ),
