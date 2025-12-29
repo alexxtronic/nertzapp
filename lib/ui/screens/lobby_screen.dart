@@ -12,6 +12,7 @@ import '../widgets/invitations_dialog.dart';
 import '../widgets/bot_difficulty_dialog.dart';
 import '../widgets/currency_display.dart';
 import 'game_screen.dart';
+import 'shop_screen.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
   const LobbyScreen({super.key});
@@ -307,6 +308,30 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                       icon: Icons.login,
                       color: GameTheme.accent,
                       onPressed: _isLoading ? null : _showJoinDialog,
+                    ),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Shop Section
+                    const Text(
+                      'SHOP',
+                      style: TextStyle(
+                        color: GameTheme.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildGameModeCard(
+                      title: 'Shop',
+                      subtitle: 'Card backs, avatars & more',
+                      icon: Icons.storefront,
+                      color: const Color(0xFFFFD700), // Gold
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ShopScreen()),
+                      ),
                     ),
                     
                     const SizedBox(height: 32),
