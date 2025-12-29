@@ -1039,8 +1039,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                           clipBehavior: Clip.none,
                           children: [
                             Container(
-                              width: GameTheme.cardWidth * 1.5,
-                              height: GameTheme.cardHeight * 1.5,
+                              width: GameTheme.cardWidth * 1.25,
+                              height: GameTheme.cardHeight * 1.25,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(GameTheme.cardRadius),
                                 boxShadow: GameTheme.softShadow,
@@ -1049,8 +1049,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                                 borderRadius: BorderRadius.circular(GameTheme.cardRadius),
                                 child: Image.asset(
                                   'assets/card_back.png',
-                                  width: GameTheme.cardWidth * 1.5,
-                                  height: GameTheme.cardHeight * 1.5,
+                                  width: GameTheme.cardWidth * 1.25,
+                                  height: GameTheme.cardHeight * 1.25,
                                   fit: BoxFit.fill,
                                   errorBuilder: (context, error, stackTrace) {
                                     return Container(
