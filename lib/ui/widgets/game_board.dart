@@ -1292,20 +1292,41 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         children: List.generate(pile.length, (index) {
           final card = pile.cards[index];
           
-          final isTopCard = index == pile.length - 1;
+          bool isDraggable = true;
+          // Check if this card and all above it form a valid stack
+          for (int i = index; i < pile.length - 1; i++) {
+             final current = pile.cards[i];
+             final next = pile.cards[i + 1];
+             // Next must be valid ON current
+             if (!next.canPlaceOnWorkPile(current)) {
+                 isDraggable = false;
+                 break;
+             }
+          }
+          
           final childWidget = GlassCard(card: card);
 
           return Positioned(
             top: index * cascadeOffset,
             left: 0,
-            child: isTopCard
+            child: isDraggable
               ? Draggable<PlayingCard>(
                   data: card,
                   feedback: Material(
                     color: Colors.transparent,
-                    child: Transform.scale(
-                      scale: 1.1,
-                      child: childWidget,
+                    child: SizedBox(
+                      width: GameTheme.cardWidth,
+                      height: GameTheme.cardHeight + ((pile.length - index - 1) * cascadeOffset),
+                      child: Stack(
+                         clipBehavior: Clip.none,
+                         children: List.generate(pile.length - index, (subIndex) {
+                             final subCard = pile.cards[index + subIndex];
+                             return Positioned(
+                               top: subIndex * cascadeOffset,
+                               child: GlassCard(card: subCard),
+                             );
+                         }),
+                      ),
                     ),
                   ),
                   childWhenDragging: Opacity(
@@ -1314,7 +1335,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                   ),
                   child: childWidget,
                 )
-              : IgnorePointer(child: childWidget), 
+              : childWidget, 
           );
         }),
       ),
