@@ -234,6 +234,12 @@ class EconomyService {
         return 'assets/card_backs/medieval_blue.jpg';
       case 'card_back_medieval_red':
         return 'assets/card_backs/medieval_red.jpg';
+      case 'card_back_swamp':
+        return 'assets/card_backs/swamp.jpg';
+      case 'card_back_wizard_blue':
+        return 'assets/card_backs/wizard_blue.jpg';
+      case 'card_back_wizard_gold':
+        return 'assets/card_backs/wizard_gold.jpg';
       default:
         return 'assets/card_back.png';
     }

@@ -76,6 +76,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     final classicProducts = products.where((p) => p.id.contains('classic')).toList();
     final hippieProducts = products.where((p) => p.id.contains('hippie')).toList();
     final medievalProducts = products.where((p) => p.id.contains('medieval')).toList();
+    final swampProducts = products.where((p) => p.id.contains('swamp')).toList();
+    final wizardProducts = products.where((p) => p.id.contains('wizard')).toList();
     
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -90,6 +92,14 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         ],
         if (medievalProducts.isNotEmpty) ...[
           _buildStyleSection('Medieval', medievalProducts, inventory, balance),
+          const SizedBox(height: 24),
+        ],
+        if (swampProducts.isNotEmpty) ...[
+          _buildStyleSection('Swamp', swampProducts, inventory, balance),
+          const SizedBox(height: 24),
+        ],
+        if (wizardProducts.isNotEmpty) ...[
+          _buildStyleSection('Wizard', wizardProducts, inventory, balance),
           const SizedBox(height: 24),
         ],
       ],
