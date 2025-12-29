@@ -10,7 +10,9 @@ import '../../models/card.dart';
 import '../../models/game_state.dart';
 import '../../engine/move_validator.dart';
 import '../../state/game_provider.dart';
+import '../../state/economy_provider.dart';
 import '../../services/audio_service.dart';
+import '../../services/economy_service.dart';
 import '../theme/game_theme.dart';
 import '../widgets/game_board.dart';
 import 'results_screen.dart';
@@ -129,6 +131,22 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
     if (gameState.phase == GamePhase.roundEnd && 
         gameState.roundWinnerId == currentPlayerId) {
       AudioService().playWinner();
+    }
+    
+    // Award coins for positive round score (only if online)
+    final currentPlayer = gameState.players[currentPlayerId];
+    if (currentPlayer != null && currentPlayer.scoreThisRound > 0) {
+      final coinsEarned = EconomyService.calculateCoinsEarned(currentPlayer.scoreThisRound);
+      if (coinsEarned > 0 && EconomyService().isOnline) {
+        EconomyService().awardCoins(
+          amount: coinsEarned,
+          source: 'game_reward',
+          referenceId: gameState.matchId,
+        ).then((_) {
+          // Refresh balance in providers
+          ref.invalidate(balanceProvider);
+        });
+      }
     }
     
     showModalBottomSheet(

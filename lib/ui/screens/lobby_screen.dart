@@ -10,6 +10,7 @@ import '../../state/bot_difficulty_provider.dart';
 import '../theme/game_theme.dart';
 import '../widgets/invitations_dialog.dart';
 import '../widgets/bot_difficulty_dialog.dart';
+import '../widgets/currency_display.dart';
 import 'game_screen.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
@@ -336,6 +337,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Logo section
           Row(
             children: [
                Hero(
@@ -350,41 +352,51 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             ],
           ),
           
-          StreamBuilder<List<Map<String, dynamic>>>(
-            stream: SupabaseService().getInvitesStream(),
-            builder: (context, snapshot) {
-              final inviteCount = snapshot.data?.length ?? 0;
-              return GestureDetector(
-                onTap: () {
-                   if (inviteCount > 0) {
-                     showDialog(context: context, builder: (_) => const InvitationsDialog());
-                   } else {
-                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())).then((_) => _refreshProfile());
-                   }
-                },
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                     CircleAvatar(
-                       radius: 20,
-                       backgroundColor: GameTheme.primary,
-                       backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                       child: avatarUrl == null ? const Icon(Icons.person, color: Colors.white) : null,
-                     ),
-                     if (inviteCount > 0)
-                       Positioned(
-                         top: 0,
-                         right: 0,
-                         child: Container(
-                           padding: const EdgeInsets.all(4),
-                           decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle, border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 2))),
-                           child: Text('$inviteCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+          // Currency + Profile section
+          Row(
+            children: [
+              // Currency Display
+              const CurrencyDisplay(compact: true),
+              const SizedBox(width: 16),
+              
+              // Profile Avatar with Invite Badge
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: SupabaseService().getInvitesStream(),
+                builder: (context, snapshot) {
+                  final inviteCount = snapshot.data?.length ?? 0;
+                  return GestureDetector(
+                    onTap: () {
+                       if (inviteCount > 0) {
+                         showDialog(context: context, builder: (_) => const InvitationsDialog());
+                       } else {
+                         Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())).then((_) => _refreshProfile());
+                       }
+                    },
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                         CircleAvatar(
+                           radius: 20,
+                           backgroundColor: GameTheme.primary,
+                           backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                           child: avatarUrl == null ? const Icon(Icons.person, color: Colors.white) : null,
                          ),
-                       ),
-                  ],
-                ),
-              );
-            }
+                         if (inviteCount > 0)
+                           Positioned(
+                             top: 0,
+                             right: 0,
+                             child: Container(
+                               padding: const EdgeInsets.all(4),
+                               decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle, border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 2))),
+                               child: Text('$inviteCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                             ),
+                           ),
+                      ],
+                    ),
+                  );
+                }
+              ),
+            ],
           ),
         ],
       ),

@@ -26,16 +26,16 @@ class CurrencyDisplay extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _CurrencyChip(
-              icon: '🪙',
+              iconAsset: 'assets/coin_icon.png',
               value: balance.coins,
               color: const Color(0xFFFFD700), // Gold
               compact: compact,
             ),
             const SizedBox(width: 8),
             _CurrencyChip(
-              icon: '💎',
+              iconAsset: 'assets/gem_icon.png',
               value: balance.gems,
-              color: const Color(0xFF00CED1), // Cyan
+              color: const Color(0xFF9B59B6), // Purple
               compact: compact,
             ),
           ],
@@ -52,13 +52,13 @@ class CurrencyDisplay extends ConsumerWidget {
 }
 
 class _CurrencyChip extends StatelessWidget {
-  final String icon;
+  final String iconAsset;
   final int value;
   final Color color;
   final bool compact;
 
   const _CurrencyChip({
-    required this.icon,
+    required this.iconAsset,
     required this.value,
     required this.color,
     this.compact = false,
@@ -82,9 +82,10 @@ class _CurrencyChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            icon,
-            style: TextStyle(fontSize: compact ? 14 : 16),
+          Image.asset(
+            iconAsset,
+            width: compact ? 18 : 24,
+            height: compact ? 18 : 24,
           ),
           const SizedBox(width: 4),
           Text(
