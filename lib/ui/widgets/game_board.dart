@@ -523,13 +523,13 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                         mainAxisAlignment: MainAxisAlignment.center, // Center vertical content
                         children: [
                           _buildHeader(player),
-                          const Spacer(flex: 3), // PUSH OPPONENTS DOWN
+                          const Spacer(flex: 4), // PUSH OPPONENTS DOWN (More)
                           _buildOpponentsRow(),
-                          const SizedBox(height: 16), // Closer to Center Piles
+                          const SizedBox(height: 8), // Tighter to Center Piles
                           _buildCenterArea(),
                           const Spacer(flex: 1), // Gap between center and work
                           _buildWorkPiles(context, player),
-                          const Spacer(flex: 2), // PUSH WORK PILES UP (away from Hand)
+                          const Spacer(flex: 3), // PUSH WORK PILES UP (More away from Hand)
                           _buildPlayerHand(player),
                           const SizedBox(height: 32), // Keep Stock/Nertz at bottom
                         ],
@@ -1276,8 +1276,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
     
     // Condensed cascade view with Stack Dragging Support
-    // Scale down offset to show only a slice (header) of buried cards
-    const double cascadeOffset = 12.0;
+    // Increased offset to 24.0 for better touch target (12.0 was too small)
+    const double cascadeOffset = 24.0;
     
     // Calculate total height to ensure SizedBox is large enough
     double totalHeight = GameTheme.cardHeight + ((pile.length - 1) * cascadeOffset);
