@@ -25,7 +25,7 @@ class GameState {
   final List<CenterPile> centerPiles; // 16 generic slots
   GamePhase phase;
   int roundNumber;
-  final int targetScore;
+  int pointsToWin; // Mutable: can be set to 50, 100, or 150
   String? hostId;
   String? roundWinnerId;
   DateTime? roundStartTime;
@@ -36,7 +36,7 @@ class GameState {
     required this.centerPiles,
     this.phase = GamePhase.lobby,
     this.roundNumber = 0,
-    this.targetScore = 100,
+    this.pointsToWin = 100,
     this.hostId,
     this.roundWinnerId,
     this.roundStartTime,
@@ -205,7 +205,7 @@ class GameState {
       player.scoreTotal += player.scoreThisRound;
     }
 
-    final winners = players.values.where((p) => p.scoreTotal >= targetScore);
+    final winners = players.values.where((p) => p.scoreTotal >= pointsToWin);
     if (winners.isNotEmpty) {
       phase = GamePhase.matchEnd;
     }
@@ -233,7 +233,7 @@ class GameState {
     'centerPiles': centerPiles.map((pile) => pile.toJson()).toList(),
     'phase': phase.index,
     'roundNumber': roundNumber,
-    'targetScore': targetScore,
+    'pointsToWin': pointsToWin,
     'hostId': hostId,
     'roundWinnerId': roundWinnerId,
     'roundStartTime': roundStartTime?.toIso8601String(),
@@ -253,7 +253,7 @@ class GameState {
       centerPiles: centerPiles,
       phase: GamePhase.values[json['phase'] as int],
       roundNumber: json['roundNumber'] as int,
-      targetScore: json['targetScore'] as int,
+      pointsToWin: json['pointsToWin'] as int? ?? 100,
       hostId: json['hostId'] as String?,
       roundWinnerId: json['roundWinnerId'] as String?,
       roundStartTime: json['roundStartTime'] != null 

@@ -131,6 +131,13 @@ class GameTheme {
   static const Duration animNormal = Duration(milliseconds: 300);
   static const Duration animSlow = Duration(milliseconds: 500);
   
+  // ========================================
+  // ACCESSIBILITY
+  // ========================================
+  static const double minTapTarget = 48.0; // iOS/Android minimum
+  static const double focusRingWidth = 2.0;
+  static const Color focusRingColor = primary;
+  
   static List<BoxShadow> cardHoverShadow = [
     BoxShadow(
       color: primary.withValues(alpha: 0.3),

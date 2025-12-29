@@ -121,10 +121,18 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     final matchId = SupabaseGameClient.generateMatchId();
     final newState = GameState.newMatch(matchId, playerId, playerName);
     
-    // Add 3 bots for a full 4-player game
-    newState.addPlayer('ai_1', 'Bot Dewy', isBot: true);
-    newState.addPlayer('ai_2', 'Bot Aaron', isBot: true);
-    newState.addPlayer('ai_3', 'Bot Adam', isBot: true);
+    // Get settings from providers
+    final botCount = ref.read(botCountProvider);
+    final pointsToWin = ref.read(pointsToWinProvider);
+    
+    // Store points to win in game state
+    newState.pointsToWin = pointsToWin;
+    
+    // Add bots based on setting (1-3 bots)
+    final botNames = ['Bot Dewy', 'Bot Aaron', 'Bot Adam'];
+    for (int i = 0; i < botCount; i++) {
+      newState.addPlayer('ai_${i + 1}', botNames[i], isBot: true);
+    }
     
     // Assign colors for the match (will persist across rounds)
     _assignPlayerColors(newState);

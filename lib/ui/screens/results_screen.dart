@@ -20,8 +20,55 @@ class ResultsScreen extends ConsumerWidget {
     final currentPlayerId = ref.watch(playerIdProvider);
     
     if (gameState == null || leaderboard.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text('No results available')),
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: GameTheme.backgroundGradient,
+          ),
+          child: SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: GameTheme.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.leaderboard_outlined,
+                      size: 48,
+                      color: GameTheme.primary.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'No results yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: GameTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Complete a game to see your results',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: GameTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Go Back'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       );
     }
     
