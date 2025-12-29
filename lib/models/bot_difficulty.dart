@@ -40,13 +40,13 @@ enum BotDifficulty {
   String get description {
     switch (this) {
       case BotDifficulty.easy:
-        return '3 second delay - Relaxed pace';
+        return 'Relaxed pace';
       case BotDifficulty.medium:
-        return '2.5 second delay - Balanced pace';
+        return 'Balanced pace';
       case BotDifficulty.hard:
-        return '2 second delay - Fast pace';
+        return 'Fast pace';
       case BotDifficulty.extreme:
-        return '1.5 second delay - Lightning fast!';
+        return 'Lightning fast!';
     }
   }
   

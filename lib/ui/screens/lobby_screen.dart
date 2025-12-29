@@ -231,12 +231,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                         borderRadius: BorderRadius.circular(20),
                         child: InkWell(
                           onTap: _isLoading ? null : _startLocalGame,
-                          onLongPress: () {
-                            showDialog(
-                              context: context,
-                              builder: (_) => const BotDifficultyDialog(),
-                            );
-                          },
                           borderRadius: BorderRadius.circular(20),
                           child: Padding(
                             padding: const EdgeInsets.all(20),
