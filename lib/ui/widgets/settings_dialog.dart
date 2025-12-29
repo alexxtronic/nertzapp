@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/game_theme.dart';
 import '../../services/audio_service.dart';
 
-void showSettingsDialog(BuildContext context) {
+/// Show settings dialog with optional leave match action
+void showSettingsDialog(BuildContext context, {VoidCallback? onLeaveMatch}) {
   showDialog(
     context: context,
     builder: (context) => StatefulBuilder(
@@ -68,13 +69,13 @@ void showSettingsDialog(BuildContext context) {
                   ),
                 ),
                 
-                // Content
+                // Music toggle
                 Padding(
                   padding: EdgeInsets.fromLTRB(
                     GameTheme.spacing24, 
                     0, 
                     GameTheme.spacing24, 
-                    GameTheme.spacing24,
+                    GameTheme.spacing16,
                   ),
                   child: _buildSettingRow(
                     icon: Icons.music_note,
@@ -87,12 +88,79 @@ void showSettingsDialog(BuildContext context) {
                   ),
                 ),
                 
-                const SizedBox(height: GameTheme.spacing8),
+                // Leave Match button (only shown when in-game)
+                if (onLeaveMatch != null)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      GameTheme.spacing24, 
+                      0, 
+                      GameTheme.spacing24, 
+                      GameTheme.spacing24,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context); // Close dialog first
+                          _showLeaveConfirmation(context, onLeaveMatch);
+                        },
+                        icon: const Icon(Icons.exit_to_app),
+                        label: const Text('Leave Match'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: GameTheme.error,
+                          side: const BorderSide(color: GameTheme.error),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(GameTheme.radius12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                
+                if (onLeaveMatch == null)
+                  const SizedBox(height: GameTheme.spacing8),
               ],
             ),
           ),
         );
       },
+    ),
+  );
+}
+
+void _showLeaveConfirmation(BuildContext context, VoidCallback onLeaveMatch) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: GameTheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(GameTheme.radius16),
+      ),
+      title: const Text(
+        'Leave Match?',
+        style: TextStyle(color: GameTheme.textPrimary),
+      ),
+      content: const Text(
+        'Your progress in this game will be lost.',
+        style: TextStyle(color: GameTheme.textSecondary),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('CANCEL'),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context); // Close confirmation
+            onLeaveMatch();
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: GameTheme.error,
+          ),
+          child: const Text('LEAVE'),
+        ),
+      ],
     ),
   );
 }

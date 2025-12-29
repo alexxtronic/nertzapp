@@ -117,9 +117,15 @@ class AudioService {
     await playSound('audio/explosion.mp3');
   }
 
-  /// Applause for winner
+  /// Applause for overall game winner (100 points)
   Future<void> playApplause() async {
     await playSound('audio/applause.mp3');
+  }
+
+  /// Winner sound for round win
+  Future<void> playWinner() async {
+    debugPrint('🔊 Playing winner sound');
+    await playSound('audio/winner.mp3');
   }
 
   /// Ping sound for center pile placement

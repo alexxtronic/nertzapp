@@ -10,6 +10,7 @@ import '../../models/card.dart';
 import '../../models/game_state.dart';
 import '../../engine/move_validator.dart';
 import '../../state/game_provider.dart';
+import '../../services/audio_service.dart';
 import '../theme/game_theme.dart';
 import '../widgets/game_board.dart';
 import 'results_screen.dart';
@@ -121,7 +122,14 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
 
   void _showRoundEndSheet() {
     final gameState = ref.read(gameStateProvider);
+    final currentPlayerId = ref.read(playerIdProvider);
     if (gameState == null) return;
+    
+    // Play winner sound if current player won the round (but not match end - that gets applause)
+    if (gameState.phase == GamePhase.roundEnd && 
+        gameState.roundWinnerId == currentPlayerId) {
+      AudioService().playWinner();
+    }
     
     showModalBottomSheet(
       context: context,
@@ -281,6 +289,22 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
             style: cardStyle,
             onMove: _handleMove,
             onCenterPilePlaced: _showPlusOneAnimation,
+            onLeaveMatch: () {
+              ref.read(gameStateProvider.notifier).reset();
+              Navigator.of(context).pushAndRemoveUntil(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                      child: child,
+                    );
+                  },
+                  transitionDuration: const Duration(milliseconds: 300),
+                ),
+                (route) => false,
+              );
+            },
           ),
           
           // Lobby Overlay

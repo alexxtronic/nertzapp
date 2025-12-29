@@ -231,6 +231,7 @@ class GameBoard extends StatefulWidget {
   final Function(Move)? onMove;
   final Function(PlayingCard)? onCardDoubleTap;
   final VoidCallback? onCenterPilePlaced;
+  final VoidCallback? onLeaveMatch;
   
   const GameBoard({
     super.key,
@@ -240,6 +241,7 @@ class GameBoard extends StatefulWidget {
     this.onMove,
     this.onCardDoubleTap,
     this.onCenterPilePlaced,
+    this.onLeaveMatch,
   });
 
   @override
@@ -259,6 +261,10 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   int _countdownValue = 0;
   bool _showCountdown = false;
   Timer? _countdownTimer;
+  
+  // Card dealing animation during countdown
+  double _dealProgress = 0.0; // 0 to 1 representing cards dealt
+  List<double> _cardAnimations = []; // Animation progress for each dealt card
   
   // Confetti
   late ConfettiController _confettiController;
@@ -315,11 +321,30 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     setState(() {
       _showCountdown = true;
       _countdownValue = 3;
+      _dealProgress = 0.0;
+      _cardAnimations = List.filled(13, 0.0); // 13 cards for nertz pile
     });
     
-    // AudioService().playCountdown(); // Removed per user request
+    // Play shuffle sound at start of dealing
+    AudioService().playShuffle();
     
     _countdownTimer?.cancel();
+    
+    // Animate card dealing over 3 seconds (during countdown)
+    // Deal cards progressively
+    int cardIndex = 0;
+    Timer.periodic(const Duration(milliseconds: 200), (dealTimer) {
+      if (!mounted || cardIndex >= 13) {
+        dealTimer.cancel();
+        return;
+      }
+      setState(() {
+        _cardAnimations[cardIndex] = 1.0;
+        cardIndex++;
+        _dealProgress = cardIndex / 13;
+      });
+    });
+    
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
@@ -329,7 +354,6 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       setState(() {
         if (_countdownValue > 1) {
           _countdownValue--;
-          // AudioService().playBeep(); // 2, 1 (Removed per request)
         } else if (_countdownValue == 1) {
            _countdownValue = 0; // Show "NERTZ!" or "GO!"
            AudioService().playGo(); // GO!
@@ -686,7 +710,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                   child: IconButton(
                     icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 20),
                     onPressed: () {
-                      showSettingsDialog(context);
+                      showSettingsDialog(context, onLeaveMatch: widget.onLeaveMatch);
                     },
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -1425,31 +1449,136 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
     
     return Container(
-      color: Colors.black.withValues(alpha: 0.7),
-      child: Center(
-        child: TweenAnimationBuilder<double>(
-          key: ValueKey(_countdownValue),
-          tween: Tween(begin: 0.5, end: 1.0),
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.elasticOut,
-          builder: (context, value, child) {
-            return Transform.scale(
-              scale: value,
-              child: Text(
-                text,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 80,
-                  fontWeight: FontWeight.w900,
-                  shadows: [
-                    Shadow(color: GameTheme.primary, blurRadius: 20),
-                  ],
-                ),
+      color: Colors.black.withValues(alpha: 0.85),
+      child: Stack(
+        children: [
+          // Card dealing animation in background
+          Center(
+            child: SizedBox(
+              width: 300,
+              height: 200,
+              child: Stack(
+                children: [
+                  // Deck on left side
+                  Positioned(
+                    left: 20,
+                    top: 50,
+                    child: _buildAnimatedDeck(),
+                  ),
+                  // Dealt cards flying to right
+                  for (int i = 0; i < _cardAnimations.length; i++)
+                    if (_cardAnimations[i] > 0)
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        left: 20 + (_cardAnimations[i] * 180),
+                        top: 50 + (i * 2.0),
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 150),
+                          opacity: _cardAnimations[i],
+                          child: Transform.rotate(
+                            angle: (i - 6) * 0.03,
+                            child: Container(
+                              width: 50,
+                              height: 70,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: GameTheme.primary.withValues(alpha: 0.5)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    blurRadius: 4,
+                                    offset: const Offset(2, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${13 - i}',
+                                  style: TextStyle(
+                                    color: GameTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                ],
               ),
-            );
-          },
-        ),
+            ),
+          ),
+          // Countdown number/text overlaid
+          Center(
+            child: TweenAnimationBuilder<double>(
+              key: ValueKey(_countdownValue),
+              tween: Tween(begin: 0.5, end: 1.0),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 80,
+                        fontWeight: FontWeight.w900,
+                        shadows: [
+                          Shadow(color: GameTheme.primary, blurRadius: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
+    );
+  }
+  
+  Widget _buildAnimatedDeck() {
+    // Show remaining cards in deck
+    final cardsRemaining = 13 - (_dealProgress * 13).floor();
+    return Stack(
+      children: [
+        for (int i = 0; i < cardsRemaining; i++)
+          Positioned(
+            top: -i * 0.5,
+            left: i * 0.3,
+            child: Container(
+              width: 50,
+              height: 70,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [GameTheme.primary, GameTheme.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 2,
+                    offset: const Offset(1, 1),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
