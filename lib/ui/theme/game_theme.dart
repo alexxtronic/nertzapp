@@ -100,6 +100,37 @@ class GameTheme {
   static const Duration cardFlipDuration = Duration(milliseconds: 300);
   static const Duration cardHighlightDuration = Duration(milliseconds: 200);
   
+  // ========================================
+  // SPACING SCALE (8pt grid)
+  // ========================================
+  static const double spacing4 = 4.0;
+  static const double spacing8 = 8.0;
+  static const double spacing12 = 12.0;
+  static const double spacing16 = 16.0;
+  static const double spacing20 = 20.0;
+  static const double spacing24 = 24.0;
+  static const double spacing32 = 32.0;
+  static const double spacing40 = 40.0;
+  static const double spacing48 = 48.0;
+  
+  // ========================================
+  // BORDER RADIUS SCALE
+  // ========================================
+  static const double radius8 = 8.0;
+  static const double radius12 = 12.0;
+  static const double radius14 = 14.0;
+  static const double radius16 = 16.0;
+  static const double radius20 = 20.0;
+  static const double radius24 = 24.0;
+  static const double radius30 = 30.0;
+  
+  // ========================================
+  // ANIMATION DURATIONS
+  // ========================================
+  static const Duration animFast = Duration(milliseconds: 150);
+  static const Duration animNormal = Duration(milliseconds: 300);
+  static const Duration animSlow = Duration(milliseconds: 500);
+  
   static List<BoxShadow> cardHoverShadow = [
     BoxShadow(
       color: primary.withValues(alpha: 0.3),
@@ -200,12 +231,23 @@ class GameTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          elevation: 4,
+          elevation: 0, // Modern flat style
           shadowColor: primary.withValues(alpha: 0.4),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(radius16),
           ),
+          animationDuration: animFast,
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return Colors.white.withValues(alpha: 0.2);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return Colors.white.withValues(alpha: 0.1);
+            }
+            return null;
+          }),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -214,8 +256,19 @@ class GameTheme {
           side: const BorderSide(color: primary, width: 2),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(radius16),
           ),
+          animationDuration: animFast,
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return primary.withValues(alpha: 0.15);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return primary.withValues(alpha: 0.08);
+            }
+            return null;
+          }),
         ),
       ),
     );

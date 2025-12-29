@@ -820,6 +820,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         return pile.canAdd(details.data);
       },
       onAcceptWithDetails: (details) {
+        HapticFeedback.lightImpact(); // Tactile feedback
         AudioService().playPing(); // Play ping sound
         onMove?.call(Move(
           type: MoveType.toCenter,
@@ -1127,6 +1128,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               return pile.canAdd(details.data);
             },
             onAcceptWithDetails: (details) {
+              HapticFeedback.lightImpact(); // Tactile feedback
               final movingCard = details.data;
               final location = player.findCard(movingCard.id);
               MoveType type = MoveType.toWorkPile;

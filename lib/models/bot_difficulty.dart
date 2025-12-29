@@ -12,13 +12,13 @@ enum BotDifficulty {
   int get delayMs {
     switch (this) {
       case BotDifficulty.easy:
-        return 3000; // 3 seconds
+        return 5000; // 5 seconds
       case BotDifficulty.medium:
-        return 2500; // 2.5 seconds
+        return 4000; // 4 seconds
       case BotDifficulty.hard:
-        return 2000; // 2 seconds
+        return 3000; // 3 seconds
       case BotDifficulty.extreme:
-        return 1500; // 1.5 seconds
+        return 2000; // 2 seconds
     }
   }
   

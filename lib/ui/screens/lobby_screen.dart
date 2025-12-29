@@ -154,7 +154,16 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
   void _navigateToGame() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const GameScreen()),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const GameScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
     );
   }
 
