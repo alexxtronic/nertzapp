@@ -1,15 +1,14 @@
 // import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:nertz_royale/models/player_state.dart' show PlayerRank;
 import 'package:nertz_royale/services/supabase_service.dart';
-import 'package:nertz_royale/services/economy_service.dart';
-import 'package:nertz_royale/state/economy_provider.dart';
-import 'package:nertz_royale/models/economy.dart';
+
 import 'package:nertz_royale/ui/theme/game_theme.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'leaderboard_screen.dart';
+import 'customization_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -203,44 +202,69 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final username = _profile!['username'] as String? ?? 'Player';
     final avatarUrl = _profile!['avatar_url'] as String?;
     final wins = (_profile!['wins'] as int?) ?? 0;
+    final streak = (_profile!['win_streak'] as int?) ?? 0;
+    final bestTime = _profile!['best_time'] as int?;
     
     // XP Logic
-    // 10 XP per win
-    final xp = wins * 10;
+    final xp = (_profile!['total_xp'] as int?) ?? 0;
     
     // Ranks
-    // Bronze: 0-99 XP
-    // Silver: 100-249 XP
-    // Gold: 250-499 XP
-    // Platinum: 500+ XP
+    // Bronze: 0-249 XP
+    // Silver: 250-999 XP
+    // Gold: 1000-4999 XP
+    // Platinum: 5000+ XP
     String rank = 'Bronze';
     String trophyAsset = 'assets/trophies/bronze.png';
-    int nextLevelXp = 100;
+    int nextLevelXp = 250;
     int currentLevelBaseXp = 0;
     Color ringColor = const Color(0xFFCD7F32); // Bronze
     
-    if (xp >= 500) {
+    if (xp >= 150000) {
+      rank = 'Legend';
+      trophyAsset = 'assets/trophies/legend.png';
+      nextLevelXp = 1000000; // Max
+      currentLevelBaseXp = 150000;
+      ringColor = const Color(0xFFFFC107); // Amber/Gold
+    } else if (xp >= 75000) {
+      rank = 'Grandmaster';
+      trophyAsset = 'assets/trophies/grandmaster.png';
+      nextLevelXp = 150000;
+      currentLevelBaseXp = 75000;
+      ringColor = const Color(0xFFDC2626); // Red 600
+    } else if (xp >= 25000) {
+      rank = 'Master';
+      trophyAsset = 'assets/trophies/master.png';
+      nextLevelXp = 75000;
+      currentLevelBaseXp = 25000;
+      ringColor = const Color(0xFF9333EA); // Purple 600
+    } else if (xp >= 10000) {
+      rank = 'Diamond';
+      trophyAsset = 'assets/trophies/diamond.png';
+      nextLevelXp = 25000;
+      currentLevelBaseXp = 10000;
+      ringColor = const Color(0xFF0EA5E9); // Sky Blue 500
+    } else if (xp >= 5000) {
       rank = 'Platinum';
       trophyAsset = 'assets/trophies/platinum.png';
-      nextLevelXp = 10000; // Max
-      currentLevelBaseXp = 500;
+      nextLevelXp = 10000;
+      currentLevelBaseXp = 5000;
       ringColor = const Color(0xFFE5E4E2); // Platinum
-    } else if (xp >= 250) {
+    } else if (xp >= 1000) {
       rank = 'Gold';
       trophyAsset = 'assets/trophies/gold.png';
-      nextLevelXp = 500;
-      currentLevelBaseXp = 250;
+      nextLevelXp = 5000;
+      currentLevelBaseXp = 1000;
       ringColor = const Color(0xFFFFD700); // Gold
-    } else if (xp >= 100) {
+    } else if (xp >= 250) {
       rank = 'Silver';
       trophyAsset = 'assets/trophies/silver.png';
-      nextLevelXp = 250;
-      currentLevelBaseXp = 100;
+      nextLevelXp = 1000;
+      currentLevelBaseXp = 250;
       ringColor = const Color(0xFFC0C0C0); // Silver
     }
     
     final levelProgress = (xp - currentLevelBaseXp) / (nextLevelXp - currentLevelBaseXp);
-    final isMaxLevel = xp >= 500;
+    final isMaxLevel = xp >= 5000;
 
     return Scaffold(
       backgroundColor: GameTheme.surfaceLight,
@@ -256,60 +280,98 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Column(
           children: [
             // 1. Avatar & Level Ring
-             Stack(
-               alignment: Alignment.center,
+             // 1. Avatar & Level Ring & Gear
+             Row(
+               mainAxisAlignment: MainAxisAlignment.center,
+               crossAxisAlignment: CrossAxisAlignment.end,
                children: [
-                 // Progress Ring
-                 SizedBox(
-                   width: 130,
-                   height: 130,
-                   child: CircularProgressIndicator(
-                     value: isMaxLevel ? 1.0 : levelProgress,
-                     strokeWidth: 6,
-                     backgroundColor: Colors.grey.shade200,
-                     valueColor: AlwaysStoppedAnimation<Color>(ringColor),
-                     strokeCap: StrokeCap.round,
-                   ),
-                 ),
-                 
-                 // Avatar
-                 GestureDetector(
-                   onTap: _pickAndUploadImage,
-                   child: Container(
-                     width: 110,
-                     height: 110,
-                     decoration: const BoxDecoration(
-                       shape: BoxShape.circle,
-                       color: Colors.white,
-                     ),
-                     padding: const EdgeInsets.all(4), 
-                     child: CircleAvatar(
-                        backgroundColor: GameTheme.primary,
-                        backgroundImage: avatarUrl != null 
-                            ? NetworkImage(avatarUrl) 
-                            : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
-                        child: _isUploading 
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : null,
-                     ),
-                   ),
-                 ),
-                 
-                 // Edit Pencil
-                 Positioned(
-                   bottom: 0,
-                   right: 0,
-                   child: GestureDetector(
-                     onTap: _pickAndUploadImage,
-                     child: Container(
-                       padding: const EdgeInsets.all(8),
-                       decoration: BoxDecoration(
-                         color: GameTheme.primary,
-                         shape: BoxShape.circle,
-                         border: Border.all(color: Colors.white, width: 2),
-                         boxShadow: GameTheme.softShadow,
+                 const SizedBox(width: 48), // Balance the gear on the right
+                 Stack(
+                   alignment: Alignment.center,
+                   children: [
+                     // Progress Ring
+                     SizedBox(
+                       width: 130,
+                       height: 130,
+                       child: CircularProgressIndicator(
+                         value: isMaxLevel ? 1.0 : levelProgress,
+                         strokeWidth: 6,
+                         backgroundColor: Colors.grey.shade200,
+                         valueColor: AlwaysStoppedAnimation<Color>(ringColor),
+                         strokeCap: StrokeCap.round,
                        ),
-                       child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                     ),
+                     
+                     // Avatar
+                     GestureDetector(
+                       onTap: _pickAndUploadImage,
+                       child: Container(
+                         width: 110,
+                         height: 110,
+                         decoration: const BoxDecoration(
+                           shape: BoxShape.circle,
+                           color: Colors.white,
+                         ),
+                         padding: const EdgeInsets.all(4), 
+                         child: CircleAvatar(
+                            backgroundColor: GameTheme.primary,
+                            backgroundImage: avatarUrl != null 
+                                ? NetworkImage(avatarUrl) 
+                                : const AssetImage('assets/avatars/avatar1.jpg') as ImageProvider,
+                            child: _isUploading 
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : null,
+                         ),
+                       ),
+                     ),
+                     
+                     // Edit Pencil (Bottom Right of Avatar)
+                     Positioned(
+                       bottom: 0,
+                       right: 0,
+                       child: GestureDetector(
+                         onTap: _pickAndUploadImage,
+                         child: Container(
+                           padding: const EdgeInsets.all(8),
+                           decoration: BoxDecoration(
+                             color: GameTheme.primary,
+                             shape: BoxShape.circle,
+                             border: Border.all(color: Colors.white, width: 2),
+                             boxShadow: GameTheme.softShadow,
+                           ),
+                           child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                         ),
+                       ),
+                     ),
+                   ],
+                 ),
+                 
+                 // Customization Gear (Right of Avatar)
+                 Padding(
+                   padding: const EdgeInsets.only(left: 12, bottom: 12),
+                   child: GestureDetector(
+                     onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CustomizationScreen()),
+                        );
+                     },
+                     child: Container(
+                       width: 48,
+                       height: 48,
+                       decoration: BoxDecoration(
+                         color: Colors.white,
+                         shape: BoxShape.circle,
+                         border: Border.all(color: GameTheme.primary, width: 2),
+                         boxShadow: [
+                           BoxShadow(
+                             color: GameTheme.primary.withValues(alpha: 0.2),
+                             blurRadius: 10,
+                             offset: const Offset(0, 4),
+                           )
+                         ],
+                       ),
+                       child: const Icon(Icons.settings, color: GameTheme.primary, size: 28),
                      ),
                    ),
                  ),
@@ -373,46 +435,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
              
                    // Rank Display - Glowing Circle
                    Center(
-                     child: Column(
-                       children: [
-                          Text(
-                            rank.toUpperCase(), 
-                            style: const TextStyle(
-                              fontSize: 24, 
-                              fontWeight: FontWeight.w900, 
-                              letterSpacing: 1.2,
-                              color: GameTheme.textPrimary
-                            )
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: ringColor, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: ringColor.withOpacity(0.4),
-                                  blurRadius: 20,
-                                  spreadRadius: 0,
-                                ),
-                              ],
+                     child: GestureDetector(
+                       onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => LeaderboardScreen()),
+                          );
+                       },
+                       child: Column(
+                         children: [
+                            Text(
+                              rank.toUpperCase(), 
+                              style: const TextStyle(
+                                fontSize: 24, 
+                                fontWeight: FontWeight.w900, 
+                                letterSpacing: 1.2,
+                                color: GameTheme.textPrimary
+                              )
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: ColorFiltered(
-                                colorFilter: const ColorFilter.matrix([
-                                  1.3, 0, 0, 0, 0,
-                                  0, 1.3, 0, 0, 0,
-                                  0, 0, 1.3, 0, 0,
-                                  0, 0, 0, 1, 0,
-                                ]),
-                                child: Image.asset(trophyAsset, width: 100, height: 100, fit: BoxFit.contain),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: ringColor, width: 3),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: ringColor.withOpacity(0.4),
+                                    blurRadius: 20,
+                                    spreadRadius: 0,
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: ColorFiltered(
+                                  colorFilter: const ColorFilter.matrix([
+                                    1.3, 0, 0, 0, 0,
+                                    0, 1.3, 0, 0, 0,
+                                    0, 0, 1.3, 0, 0,
+                                    0, 0, 0, 1, 0,
+                                  ]),
+                                  child: Image.asset(trophyAsset, width: 100, height: 100, fit: BoxFit.contain),
+                                ),
                               ),
                             ),
-                          ),
-                       ],
+                            const SizedBox(height: 8),
+                            const Text(
+                              "View Leaderboard",
+                              style: TextStyle(
+                                color: GameTheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                         ],
+                       ),
                      ),
                    ),
                  ],
@@ -441,21 +520,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                  _buildStatCard(
                    title: "Win Streak",
-                   value: "${wins > 0 ? 1 : 0}", 
+                   value: "$streak", 
                    icon: Icons.local_fire_department,
                    color: Colors.orange.shade50,
                    iconColor: Colors.orange,
                  ),
                  _buildStatCard(
                    title: "Cards Played",
-                   value: "${wins * 98}",
+                   value: "$xp",
                    icon: Icons.style, 
                    color: Colors.purple.shade50,
                    iconColor: Colors.purple,
                  ),
                  _buildStatCard(
                    title: "Best Time",
-                   value: wins > 0 ? "45s" : "--",
+                   value: bestTime != null ? "${bestTime}s" : "--",
                    icon: Icons.bolt,
                    color: Colors.green.shade50,
                    iconColor: Colors.green,
@@ -463,181 +542,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                ],
              ),
              
-             const SizedBox(height: 32),
-             
-             // 5. Customize Cards Section
-             const Align(alignment: Alignment.centerLeft, child: Text("Customize Cards", style: GameTheme.h2)),
-             const SizedBox(height: 8),
-             const Text(
-               "Select a card back for your deck",
-               style: TextStyle(color: GameTheme.textSecondary, fontSize: 14),
-             ),
-             const SizedBox(height: 16),
-             _buildCardBackSelector(),
           ],
         ),
       ),
     );
   }
   
-  Widget _buildCardBackSelector() {
-    final inventoryAsync = ref.watch(inventoryProvider);
-    final selectedAsync = ref.watch(selectedCardBackProvider);
-    final productsAsync = ref.watch(shopProductsProvider);
-    
-    return productsAsync.when(
-      data: (products) => inventoryAsync.when(
-        data: (inventory) => selectedAsync.when(
-          data: (selectedId) {
-            // Get owned card backs (including default)
-            final ownedIds = inventory.map((i) => i.itemId).toSet();
-            ownedIds.add('card_back_classic_default'); // Default is always owned
-            
-            final ownedProducts = products
-                .where((p) => p.category == 'card_back' && ownedIds.contains(p.id))
-                .toList();
-            
-            // Also add default if not in products
-            if (!ownedProducts.any((p) => p.id == 'card_back_classic_default')) {
-              ownedProducts.insert(0, ShopProduct(
-                id: 'card_back_classic_default',
-                name: 'Classic Red',
-                category: 'card_back',
-                priceCoins: 0,
-                priceGems: 0,
-                assetPath: 'assets/card_back.png',
-              ));
-            }
-            
-            if (ownedProducts.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Center(
-                  child: Text(
-                    "No card backs owned yet.\nVisit the shop to purchase some!",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: GameTheme.textSecondary),
-                  ),
-                ),
-              );
-            }
-            
-            return SizedBox(
-              height: 160,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: ownedProducts.length,
-                itemBuilder: (context, index) {
-                  final product = ownedProducts[index];
-                  final isSelected = product.id == selectedId;
-                  
-                  return GestureDetector(
-                    onTap: () => _selectCardBack(product.id),
-                    child: Container(
-                      width: 100,
-                      margin: EdgeInsets.only(right: index < ownedProducts.length - 1 ? 12 : 0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected ? GameTheme.primary : Colors.grey.shade200,
-                          width: isSelected ? 3 : 1,
-                        ),
-                        boxShadow: isSelected ? [
-                          BoxShadow(
-                            color: GameTheme.primary.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ] : null,
-                      ),
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.all(8),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: Image.asset(
-                                  EconomyService.getCardBackAssetPath(product.id),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (isSelected)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              decoration: const BoxDecoration(
-                                color: GameTheme.primary,
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(10),
-                                  bottomRight: Radius.circular(10),
-                                ),
-                              ),
-                              child: const Text(
-                                'EQUIPPED',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            )
-                          else
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(
-                                product.name,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Text('Error loading selection'),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Text('Error loading inventory'),
-      ),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const Text('Error loading products'),
-    );
-  }
-  
-  Future<void> _selectCardBack(String itemId) async {
-    final success = await EconomyService().setSelectedCardBack(itemId);
-    if (success) {
-      ref.invalidate(selectedCardBackProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Card back updated! 🎴'),
-            backgroundColor: GameTheme.success,
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
-    }
-  }
 
+  
   Widget _buildStatCard({
     required String title,
     required String value,

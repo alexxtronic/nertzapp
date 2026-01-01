@@ -8,9 +8,9 @@ final botDifficultyProvider = StateProvider<BotDifficulty>((ref) {
   return BotDifficulty.medium; // Default to medium
 });
 
-/// Provider for points needed to win a match
-final pointsToWinProvider = StateProvider<int>((ref) {
-  return 100; // Default to 100 points
+/// Provider for number of rounds in a match (1-5)
+final roundsToPlayProvider = StateProvider<int>((ref) {
+  return 3; // Default to 3 rounds
 });
 
 /// Provider for number of bots in offline mode (1-3)

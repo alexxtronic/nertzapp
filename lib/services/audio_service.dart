@@ -60,14 +60,15 @@ class AudioService {
   }
 
   /// Start background music
-  Future<void> startBackgroundMusic() async {
+  Future<void> startBackgroundMusic({String? path}) async {
     if (!_musicEnabled) return;
     
     try {
       await _bgMusicPlayer.stop();
-      await _bgMusicPlayer.setSource(AssetSource('audio/background.mp3'));
+      final source = path ?? 'audio/background.mp3';
+      await _bgMusicPlayer.setSource(AssetSource(source));
       await _bgMusicPlayer.resume();
-      debugPrint('🎵 Background music started');
+      debugPrint('🎵 Background music started: $source');
     } catch (e) {
       debugPrint('Failed to start background music: $e');
     }
@@ -131,5 +132,20 @@ class AudioService {
   /// Ping sound for center pile placement
   Future<void> playPing() async {
     await playSound('audio/ping.mp3');
+  }
+
+  /// Ding sound for Nertz button appearance
+  Future<void> playDing() async {
+    await playSound('audio/dingding.mp3');
+  }
+
+  /// Cha-ching sound for coin rewards
+  Future<void> playChaChing() async {
+    await playSound('audio/chaching.mp3');
+  }
+
+  /// Nertz card played sound
+  Future<void> playNertzCard() async {
+    await playSound('audio/nertzcard.mp3');
   }
 }

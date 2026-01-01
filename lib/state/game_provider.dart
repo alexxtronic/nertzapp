@@ -4,15 +4,11 @@ library;
 
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:nertz_royale/services/supabase_service.dart';
 import 'package:nertz_royale/engine/bot_logic.dart';
-import 'package:nertz_royale/models/bot_difficulty.dart';
 import 'package:nertz_royale/state/bot_difficulty_provider.dart';
 import 'package:nertz_royale/state/economy_provider.dart';
-
-// ... (imports remain)
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -20,13 +16,12 @@ import 'package:uuid/uuid.dart';
 import '../models/game_state.dart';
 import '../models/player_state.dart';
 import '../engine/game_engine.dart';
-export '../network/protocol.dart'; // Export protocol.dart as requested
+export '../network/protocol.dart';
 import '../engine/move_validator.dart';
 import '../network/game_client.dart' show ConnectionState, GameMessage;
 import '../network/supabase_game_client.dart';
 import '../network/protocol.dart';
 import '../ui/theme/game_theme.dart';
-import '../ui/widgets/game_board.dart';
 
 const _uuid = Uuid();
 /// Player identity provider
@@ -62,6 +57,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   final Ref ref; // Added for accessing bot difficulty
   Timer? _botTimer;
   final Map<String, DateTime> _botVoteSchedule = {};
+  final Map<String, DateTime> _botCenterPileSpotted = {}; // Tracks when bots first spot a center pile opportunity
   
   
   GameStateNotifier({
@@ -118,7 +114,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
                 final p = state!.players[id];
                 if (p == null) return false;
                 if (p.lastMoveTime == null) return true; // Never moved
-                return DateTime.now().difference(p.lastMoveTime!).inMinutes >= 2;
+                return DateTime.now().difference(p.lastMoveTime!).inSeconds >= 60; // 1 minute
               });
 
               // If someone is genuinely stuck (or we are stuck), vote YES
@@ -137,10 +133,43 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       }
       
       for (final bot in bots) {
+        // SAFETY: Check if round ended (another player won)
+        if (state == null || state!.phase != GamePhase.playing) {
+          break; // Exit bot loop immediately if round is over
+        }
+        
         // 1. Try to find a move
         final move = BotLogic.findBestMove(state!, bot.id);
         if (move != null) {
+          // Check if this is a center pile move - apply hesitation delay
+          if (move.type == MoveType.toCenter) {
+            // Track when we first spotted this center pile opportunity
+            final botCenterKey = '${bot.id}_center';
+            if (!_botCenterPileSpotted.containsKey(botCenterKey)) {
+              _botCenterPileSpotted[botCenterKey] = DateTime.now();
+            }
+            
+            // Calculate required hesitation based on difficulty
+            final difficulty = ref.read(botDifficultyProvider);
+            final hesitationMs = difficulty.centerPileDelayMs;
+            final spottedTime = _botCenterPileSpotted[botCenterKey]!;
+            final elapsed = DateTime.now().difference(spottedTime).inMilliseconds;
+            
+            if (elapsed < hesitationMs) {
+              // Still hesitating - skip this bot for now
+              continue;
+            }
+            
+            // Hesitation complete - execute and clear
+            _botCenterPileSpotted.remove(botCenterKey);
+          }
+          
           executeMove(move);
+          
+          // SAFETY: Re-check phase after move (round may have ended)
+          if (state == null || state!.phase != GamePhase.playing) {
+            break;
+          }
           
           // Bots don't need to press the button - auto-win if Nertz pile empty
           // Fetch updated state for this bot
@@ -149,6 +178,9 @@ class GameStateNotifier extends StateNotifier<GameState?> {
             executeMove(Move(type: MoveType.callNertz, playerId: bot.id));
           }
         } else {
+          // Clear any pending center pile tracking if no move available
+          _botCenterPileSpotted.remove('${bot.id}_center');
+          
           // 2. If no move...
           
           // Check if we should vote for reset independently (if stock/waste empty and no moves)
@@ -171,26 +203,50 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     });
   }
   
-  void createLocalGame() {
+  Future<void> createLocalGame() async {
     final matchId = SupabaseGameClient.generateMatchId();
-    final newState = GameState.newMatch(matchId, playerId, playerName);
+    
+    // Fetch user's XP for correct rank display
+    int totalXp = 0;
+    try {
+      final profile = await SupabaseService().getProfile();
+      if (profile != null) {
+        totalXp = (profile['total_xp'] as int?) ?? 0;
+      }
+    } catch (e) {
+      debugPrint('Error fetching XP for local game: $e');
+    }
+
+    final newState = GameState.newMatch(matchId, playerId, playerName, hostTotalXp: totalXp);
     
     // Get settings from providers
     final botCount = ref.read(botCountProvider);
-    final pointsToWin = ref.read(pointsToWinProvider);
+    final maxRounds = ref.read(roundsToPlayProvider);
     
-    // Store points to win in game state
-    newState.pointsToWin = pointsToWin;
+    // Store max rounds in game state
+    newState.maxRounds = maxRounds;
     
     // Add bots based on setting (1-3 bots)
     final botNames = ['Bot Dewy', 'Bot Aaron', 'Bot Adam'];
-    final botAvatars = [
-      'https://api.dicebear.com/7.x/avataaars/png?seed=Dewy',
-      'https://api.dicebear.com/7.x/avataaars/png?seed=Aaron',
-      'https://api.dicebear.com/7.x/avataaars/png?seed=Adam',
+    final availableAvatars = [
+      'assets/avatars/avatar1.jpg',
+      'assets/avatars/avatar2.jpg',
+      'assets/avatars/avatar3.jpg',
+      'assets/avatars/avatar4.jpg',
+      'assets/avatars/avatar5.jpg',
+      'assets/avatars/avatar6.jpg',
+      'assets/avatars/avatar7.jpg',
+      'assets/avatars/avatar8.jpg',
+      'assets/avatars/avatar9.jpg',
     ];
+    
+    // Shuffle avatars to get random ones
+    final random = Random();
+    final shuffledAvatars = List<String>.from(availableAvatars)..shuffle(random);
+
     for (int i = 0; i < botCount; i++) {
-      newState.addPlayer('ai_${i + 1}', botNames[i], isBot: true, avatarUrl: botAvatars[i]);
+      final avatarUrl = i < shuffledAvatars.length ? shuffledAvatars[i] : availableAvatars[i % availableAvatars.length];
+      newState.addPlayer('ai_${i + 1}', botNames[i], isBot: true, avatarUrl: avatarUrl);
     }
     
     // Assign colors for the match (will persist across rounds)
@@ -229,7 +285,16 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       debugPrint('⚠️ Failed to fetch card back: $e');
     }
     
-    client.joinMatch(matchId, selectedCardBack: cardBack);
+    // Fetch profile for avatar
+    String? avatarUrl;
+    try {
+      final profile = await SupabaseService().getProfile();
+      avatarUrl = profile?['avatar_url'];
+    } catch (e) {
+      debugPrint('⚠️ Failed to fetch profile avatar: $e');
+    }
+    
+    client.joinMatch(matchId, selectedCardBack: cardBack, avatarUrl: avatarUrl);
     
     // Send immediate request after a short delay for channel to establish
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -264,7 +329,17 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       debugPrint('⚠️ Failed to fetch card back: $e');
     }
 
-    state = GameState.newMatch(id, playerId, playerName, hostSelectedCardBack: cardBack);
+    // Fetch profile for avatar
+    String? avatarUrl;
+    try {
+      final profile = await SupabaseService().getProfile();
+      avatarUrl = profile?['avatar_url'];
+    } catch (e) {
+      debugPrint('⚠️ Failed to fetch profile avatar: $e');
+    }
+
+    state = GameState.newMatch(id, playerId, playerName, hostSelectedCardBack: cardBack, hostAvatarUrl: avatarUrl);
+    
     debugPrint('🏠 GameState created. hostId: ${state!.hostId}');
     joinGame(id);
   }
@@ -280,6 +355,17 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         debugPrint('📨 Executing remote move from ${message.move.playerId}');
         try {
           GameEngine.executeMove(message.move, state!);
+          
+          // Check for unanimous reset vote after remote vote (Host Only)
+          if (message.move.type == MoveType.voteReset && 
+              state!.hostId == playerId &&
+              state!.hasUnanimousResetVote) {
+            debugPrint('🔄 Unanimous vote from remote player! Resetting decks...');
+            state!.executeReset();
+            // Broadcast the new randomized state immediately
+            client.send(StateSnapshotMessage(gameState: state!));
+          }
+          
           state = GameState.fromJson(state!.toJson()); // Rebuild
         } catch (e, stack) {
           debugPrint('⚠️ Error executing remote move: $e');
@@ -291,8 +377,13 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       debugPrint('📨 JoinMatchMessage from ${message.displayName} (${message.playerId})');
       if (state != null) {
         if (!state!.players.containsKey(message.playerId)) {
-          debugPrint('📨 Adding player to state...');
-          state!.addPlayer(message.playerId, message.displayName);
+          debugPrint('📨 Adding player to state: ${message.displayName} with avatar: ${message.avatarUrl}');
+          state!.addPlayer(
+            message.playerId, 
+            message.displayName, 
+            avatarUrl: message.avatarUrl,
+            selectedCardBack: message.selectedCardBack,
+          );
           state = GameState.fromJson(state!.toJson());
         }
         
@@ -334,24 +425,47 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     // Execute locally (optimistic)
     final result = GameEngine.executeMove(move, state!);
     
-    // Update lastMoveTime if it's a gameplay move
+    // Update lastMoveTime ONLY for meaningful moves (center pile or from nertz pile)
+    // Stock taps/draws do NOT count as activity for reset vote purposes
     if (state != null && state!.players.containsKey(move.playerId)) {
        final type = move.type;
-       if (type != MoveType.voteReset && type != MoveType.callNertz) {
-          final p = state!.players[move.playerId]!;
-          state!.players[move.playerId] = p.copyWith(lastMoveTime: DateTime.now());
+       final now = DateTime.now();
+       final p = state!.players[move.playerId]!;
+       
+       // Only count: toCenter moves (which includes nertz pile plays)
+       if (type == MoveType.toCenter) {
+          state!.players[move.playerId] = p.copyWith(
+            lastMoveTime: now,
+            lastPlayableActionTime: now,
+          );
+       }
+       // Also track toWorkPile moves for shuffle timer
+       else if (type == MoveType.toWorkPile) {
+          state!.players[move.playerId] = p.copyWith(
+            lastPlayableActionTime: now,
+          );
+       }
+       // Reset lastPlayableActionTime after shuffling
+       else if (type == MoveType.shuffleDeck) {
+          state!.players[move.playerId] = p.copyWith(
+            lastPlayableActionTime: now,
+          );
        }
     }
     
+    // CRITICAL: Create new state reference BEFORE endRound mutation.
+    // This ensures Riverpod sees the old phase in 'previous' before we mutate.
+    state = GameState.fromJson(state!.toJson());
+    
     if (result.roundEnded && result.roundWinnerId != null) {
-      GameEngine.endRound(state!, result.roundWinnerId!);
-      
-      // Check if this round ended the MATCH
-      if (state!.phase == GamePhase.matchEnd && state!.leader?.id == playerId) {
-        debugPrint('🏆 Match Won! Incrementing wins...');
-        SupabaseService().incrementWin();
-      }
+      // Now mutate the NEW state object (not the one Riverpod cached as 'previous')
+      state!.endRound(result.roundWinnerId!);
+      // Create another new reference to trigger notification with updated phase
+      state = GameState.fromJson(state!.toJson());
     }
+      
+      // XP and Win logic moved to GameScreen listener to ensure it runs for all players
+      // regardless of who triggered the round/match end.
     
     // Special handling for Vote Reset (Host Only)
     if (move.type == MoveType.voteReset && 
@@ -361,13 +475,12 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       state!.executeReset();
       // Important: Broadcast the new randomized state immediately
       client.send(StateSnapshotMessage(gameState: state!));
+      state = GameState.fromJson(state!.toJson());
     }
     
     // Send to network
     client.sendMove(move);
     
-    // Create a new reference to trigger Riverpod rebuild
-    state = GameState.fromJson(state!.toJson());
     client.updateState(state!); // Keep client in sync
     
     return validation;
@@ -390,6 +503,13 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   void voteForReset() {
     executeMove(Move(
       type: MoveType.voteReset,
+      playerId: playerId,
+    ));
+  }
+  
+  void shuffleDeck() {
+    executeMove(Move(
+      type: MoveType.shuffleDeck,
       playerId: playerId,
     ));
   }
@@ -427,6 +547,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   }
   
   void reset() {
+    debugPrint('🚨 RESET CALLED! State being set to null');
+    debugPrint('Stack trace: ${StackTrace.current}');
     state = null;
     client.disconnect();
   }
@@ -434,9 +556,11 @@ class GameStateNotifier extends StateNotifier<GameState?> {
 
 /// Game state provider
 final gameStateProvider = StateNotifierProvider<GameStateNotifier, GameState?>((ref) {
-  final playerId = ref.watch(playerIdProvider);
-  final playerName = ref.watch(playerNameProvider);
-  final client = ref.watch(gameClientProvider);
+  // IMPORTANT: Use ref.read (not ref.watch) to prevent provider recreation
+  // when these values change. We only need them at initialization time.
+  final playerId = ref.read(playerIdProvider);
+  final playerName = ref.read(playerNameProvider);
+  final client = ref.read(gameClientProvider);
   
   final notifier = GameStateNotifier(
     playerId: playerId, 

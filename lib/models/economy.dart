@@ -110,6 +110,21 @@ class ShopProduct {
   });
 
   factory ShopProduct.fromJson(Map<String, dynamic> json) {
+    var path = json['asset_path'] as String?;
+    // Fix for mismatch between DB (jpg) and Assets (png)
+    if (path != null) {
+      if (path.endsWith('.jpg')) {
+        path = path.replaceAll('.jpg', '.png');
+      } else if (path.endsWith('.jpeg')) {
+        path = path.replaceAll('.jpeg', '.png');
+      }
+      
+      // Fix specific swamp path if needed (if DB has old name)
+      if (path.contains('swamp') && path.contains('Background Removed')) {
+        path = 'assets/card_backs/swamp.png';
+      }
+    }
+
     return ShopProduct(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -117,7 +132,7 @@ class ShopProduct {
       category: json['category'] as String,
       priceCoins: json['price_coins'] as int? ?? 0,
       priceGems: json['price_gems'] as int? ?? 0,
-      assetPath: json['asset_path'] as String?,
+      assetPath: path,
       isAvailable: json['is_available'] as bool? ?? true,
       sortOrder: json['sort_order'] as int? ?? 0,
     );

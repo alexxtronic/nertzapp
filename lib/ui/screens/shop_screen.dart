@@ -9,6 +9,8 @@ import '../../state/economy_provider.dart';
 import '../theme/game_theme.dart';
 import '../widgets/currency_display.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
+
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
 
@@ -17,6 +19,8 @@ class ShopScreen extends ConsumerStatefulWidget {
 }
 
 class _ShopScreenState extends ConsumerState<ShopScreen> {
+  String _selectedCategory = 'card_back';
+
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(shopProductsProvider);
@@ -47,23 +51,238 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           ),
         ],
       ),
-      body: productsAsync.when(
-        data: (products) => inventoryAsync.when(
-          data: (inventory) => balanceAsync.when(
-            data: (balance) => _buildCardBacksList(
-              products.where((p) => p.category == 'card_back').toList(),
-              inventory,
-              balance,
+      body: Column(
+        children: [
+          // Category Tabs
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildCategoryTab('Cards', 'card_back', Icons.style),
+                _buildCategoryTab('Music', 'music', Icons.music_note),
+                _buildCategoryTab('Boards', 'board', Icons.table_restaurant),
+              ],
             ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => const Center(child: Text('Error loading balance')),
           ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Center(child: Text('Error loading inventory')),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(child: Text('Error loading products')),
+          
+          const SizedBox(height: 8),
+
+          // Content
+          Expanded(
+            child: productsAsync.when(
+              data: (products) => inventoryAsync.when(
+                data: (inventory) => balanceAsync.when(
+                  data: (balance) {
+                    final filteredProducts = products.where((p) => p.category == _selectedCategory).toList();
+                    
+                    if (filteredProducts.isEmpty) {
+                      return _buildEmptyState(_selectedCategory);
+                    }
+                    
+                    if (_selectedCategory == 'card_back') {
+                      return _buildCardBacksList(filteredProducts, inventory, balance);
+                    } else if (_selectedCategory == 'music') {
+                      return _buildMusicList(filteredProducts, inventory, balance);
+                    } else if (_selectedCategory == 'board') {
+                      // Reuse card back list style for now as they are visual items too
+                      return _buildCardBacksList(filteredProducts, inventory, balance);
+                    }
+                    
+                    // Fallback for other categories if they have items but no specific layout yet
+                    return const Center(child: Text("Items available but no layout defined yet."));
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (_, __) => const Center(child: Text('Error loading balance')),
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, __) => const Center(child: Text('Error loading inventory')),
+              ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, __) => const Center(child: Text('Error loading products')),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildCategoryTab(String label, String categoryId, IconData icon) {
+    final isSelected = _selectedCategory == categoryId;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedCategory = categoryId),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isSelected ? GameTheme.primary : Colors.grey.shade100,
+              shape: BoxShape.circle,
+              boxShadow: isSelected ? [
+                BoxShadow(
+                  color: GameTheme.primary.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                )
+              ] : null,
+            ),
+            child: Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.grey.shade400,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? GameTheme.primary : Colors.grey.shade400,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String category) {
+    IconData icon;
+    String message;
+    
+    switch (category) {
+      case 'board':
+        icon = Icons.table_restaurant;
+        message = "Custom game boards coming soon!";
+        break;
+      default:
+        icon = Icons.inventory_2;
+        message = "No items available yet.";
+    }
+    
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              "STAY TUNED",
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMusicList(
+    List<ShopProduct> products,
+    List<InventoryItem> inventory,
+    CurrencyBalance? balance,
+  ) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: products.length,
+      itemBuilder: (context, index) {
+        final product = products[index];
+        final isOwned = inventory.any((i) => i.itemId == product.id) || product.isFree;
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: GameTheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.music_note, color: GameTheme.primary, size: 28),
+              ),
+              const SizedBox(width: 16),
+              
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: GameTheme.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      product.description ?? 'Awesome track',
+                      style: const TextStyle(
+                        color: GameTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Action
+              if (isOwned)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Icon(Icons.check_circle, color: GameTheme.success),
+                )
+              else
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GameTheme.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                  onPressed: () => _handlePurchase(product, balance),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset('assets/coin_icon.png', width: 16, height: 16),
+                      const SizedBox(width: 4),
+                      Text('${product.priceCoins}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
   
@@ -72,34 +291,32 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     List<InventoryItem> inventory,
     CurrencyBalance? balance,
   ) {
-    // Group products by style
-    final classicProducts = products.where((p) => p.id.contains('classic')).toList();
-    final hippieProducts = products.where((p) => p.id.contains('hippie')).toList();
-    final medievalProducts = products.where((p) => p.id.contains('medieval')).toList();
-    final swampProducts = products.where((p) => p.id.contains('swamp')).toList();
-    final wizardProducts = products.where((p) => p.id.contains('wizard')).toList();
+    // Group products by rarity (based on coin price)
+    final commonProducts = products.where((p) => p.priceCoins <= 150).toList();
+    final uncommonProducts = products.where((p) => p.priceCoins > 150 && p.priceCoins <= 300).toList();
+    final rareProducts = products.where((p) => p.priceCoins > 300 && p.priceCoins <= 750).toList();
+    final ultraRareProducts = products.where((p) => p.priceCoins > 750).toList();
     
+    // Sort logic within groups if needed? Assuming DB sort_order is fine, or maybe sort by price ascending?
+    // Let's keep them in the order they came from the DB (likely default sort) for now.
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (classicProducts.isNotEmpty) ...[
-          _buildStyleSection('Classic', classicProducts, inventory, balance),
+        if (commonProducts.isNotEmpty) ...[
+          _buildStyleSection('Common', commonProducts, inventory, balance),
           const SizedBox(height: 24),
         ],
-        if (hippieProducts.isNotEmpty) ...[
-          _buildStyleSection('Hippie', hippieProducts, inventory, balance),
+        if (uncommonProducts.isNotEmpty) ...[
+          _buildStyleSection('Uncommon', uncommonProducts, inventory, balance),
           const SizedBox(height: 24),
         ],
-        if (medievalProducts.isNotEmpty) ...[
-          _buildStyleSection('Medieval', medievalProducts, inventory, balance),
+        if (rareProducts.isNotEmpty) ...[
+          _buildStyleSection('Rare', rareProducts, inventory, balance),
           const SizedBox(height: 24),
         ],
-        if (swampProducts.isNotEmpty) ...[
-          _buildStyleSection('Swamp', swampProducts, inventory, balance),
-          const SizedBox(height: 24),
-        ],
-        if (wizardProducts.isNotEmpty) ...[
-          _buildStyleSection('Wizard', wizardProducts, inventory, balance),
+        if (ultraRareProducts.isNotEmpty) ...[
+          _buildStyleSection('Ultra-Rare', ultraRareProducts, inventory, balance),
           const SizedBox(height: 24),
         ],
       ],
@@ -152,24 +369,191 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   Future<void> _handlePurchase(ShopProduct product, CurrencyBalance? balance) async {
     if (balance == null) return;
     
-    // Determine currency to use (prefer coins if available)
-    final useGems = product.priceCoins == 0 && product.priceGems > 0;
-    final price = useGems ? product.priceGems : product.priceCoins;
-    final currency = useGems ? 'gems' : 'coins';
-    final currentBalance = useGems ? balance.gems : balance.coins;
+    // Check which payment options are available
+    final canPayWithCoins = product.priceCoins > 0 && balance.coins >= product.priceCoins;
+    final canPayWithGems = product.priceGems > 0 && balance.gems >= product.priceGems;
     
-    if (currentBalance < price) {
+    // If user can't afford with either currency
+    if (!canPayWithCoins && !canPayWithGems) {
+      String message;
+      if (product.priceCoins > 0 && product.priceGems > 0) {
+        message = 'Not enough coins or gems!';
+      } else if (product.priceCoins > 0) {
+        message = 'Not enough coins!';
+      } else {
+        message = 'Not enough gems!';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Not enough $currency!'),
+          content: Text(message),
           backgroundColor: GameTheme.error,
         ),
       );
       return;
     }
     
+    // Determine which currency to use
+    String currency;
+    int price;
+    
+    // If both payment options are available, show picker
+    if (canPayWithCoins && canPayWithGems) {
+      final selectedCurrency = await _showCurrencyPicker(product, balance);
+      if (selectedCurrency == null) return; // User cancelled
+      currency = selectedCurrency;
+      price = currency == 'coins' ? product.priceCoins : product.priceGems;
+    } else if (canPayWithCoins) {
+      currency = 'coins';
+      price = product.priceCoins;
+    } else {
+      currency = 'gems';
+      price = product.priceGems;
+    }
+    
     // Confirm purchase
-    final confirmed = await showDialog<bool>(
+    final confirmed = await _showPurchaseConfirmation(product, currency, price);
+    if (confirmed != true) return;
+    
+    // Execute purchase
+    final success = await EconomyService().purchaseItem(
+      itemId: product.id,
+      currency: currency,
+      price: price,
+    );
+    
+    if (success) {
+      ref.invalidate(balanceProvider);
+      ref.invalidate(inventoryProvider);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Purchased ${product.name}! 🎉'),
+            backgroundColor: GameTheme.success,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Purchase failed. Please try again.'),
+            backgroundColor: GameTheme.error,
+          ),
+        );
+      }
+    }
+  }
+  
+  /// Shows a popup for user to choose between coins or gems
+  Future<String?> _showCurrencyPicker(ShopProduct product, CurrencyBalance balance) async {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Choose Payment',
+          style: TextStyle(
+            color: GameTheme.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'How would you like to pay?',
+              style: TextStyle(
+                color: GameTheme.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Coins option
+                _buildCurrencyOption(
+                  ctx: ctx,
+                  currency: 'coins',
+                  iconPath: 'assets/coin_icon.png',
+                  price: product.priceCoins,
+                  currentBalance: balance.coins,
+                  color: const Color(0xFFFFD700),
+                ),
+                // Gems option
+                _buildCurrencyOption(
+                  ctx: ctx,
+                  currency: 'gems',
+                  iconPath: 'assets/gem_icon.png',
+                  price: product.priceGems,
+                  currentBalance: balance.gems,
+                  color: const Color(0xFF9B59B6),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildCurrencyOption({
+    required BuildContext ctx,
+    required String currency,
+    required String iconPath,
+    required int price,
+    required int currentBalance,
+    required Color color,
+  }) {
+    return GestureDetector(
+      onTap: () => Navigator.pop(ctx, currency),
+      child: Container(
+        width: 110,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
+        ),
+        child: Column(
+          children: [
+            Image.asset(iconPath, width: 48, height: 48),
+            const SizedBox(height: 12),
+            Text(
+              '$price',
+              style: TextStyle(
+                color: GameTheme.textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Balance: $currentBalance',
+              style: TextStyle(
+                color: GameTheme.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Future<bool?> _showPurchaseConfirmation(ShopProduct product, String currency, int price) {
+    final useGems = currency == 'gems';
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
@@ -178,16 +562,27 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Preview
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                product.assetPath ?? 'assets/card_back.png',
+            // Preview - Show icon for music, image for other products
+            if (product.category == 'music')
+              Container(
                 width: 80,
-                height: 112,
-                fit: BoxFit.cover,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: GameTheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.music_note, color: GameTheme.primary, size: 40),
+              )
+            else
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  product.assetPath ?? 'assets/card_back.png',
+                  width: 80,
+                  height: 112,
+                  fit: BoxFit.cover,
+                ),
               ),
-            ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -226,38 +621,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         ],
       ),
     );
-    
-    if (confirmed != true) return;
-    
-    // Execute purchase
-    final success = await EconomyService().purchaseItem(
-      itemId: product.id,
-      currency: currency,
-      price: price,
-    );
-    
-    if (success) {
-      ref.invalidate(balanceProvider);
-      ref.invalidate(inventoryProvider);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Purchased ${product.name}! 🎉'),
-            backgroundColor: GameTheme.success,
-          ),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Purchase failed. Please try again.'),
-            backgroundColor: GameTheme.error,
-          ),
-        );
-      }
-    }
   }
 }
 
@@ -319,10 +682,26 @@ class _CardBackItem extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  product.assetPath ?? 'assets/card_back.png',
-                  fit: BoxFit.cover,
-                ),
+                child: (product.assetPath != null && product.assetPath!.startsWith('http'))
+                    ? CachedNetworkImage(
+                        imageUrl: product.assetPath!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => const Icon(Icons.broken_image),
+                      )
+                    : Image.asset(
+                        product.assetPath ?? 'assets/card_back.png',
+                        fit: BoxFit.cover,
+                      ),
               ),
             ),
           ),

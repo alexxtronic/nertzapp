@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/game_theme.dart';
+import '../../state/economy_provider.dart';
 import '../../services/supabase_service.dart';
 import '../../services/audio_service.dart';
 
@@ -27,7 +28,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       await _authService.signInAnonymously();
       // Start background music after user interaction
-      AudioService().startBackgroundMusic();
+      // Start background music (using selected track)
+      ref.read(selectedMusicAssetProvider.future).then((path) {
+        if (mounted) AudioService().startBackgroundMusic(path: path);
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +75,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           password: password,
         );
         // Start background music after user interaction
-        AudioService().startBackgroundMusic();
+        // Start background music (using selected track)
+        ref.read(selectedMusicAssetProvider.future).then((path) {
+          if (mounted) AudioService().startBackgroundMusic(path: path);
+        });
       }
     } on AuthException catch (e) {
       if (mounted) {

@@ -12,7 +12,7 @@ class BotDifficultyDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentDifficulty = ref.watch(botDifficultyProvider);
-    final currentPoints = ref.watch(pointsToWinProvider);
+    final currentRounds = ref.watch(roundsToPlayProvider);
     final currentBotCount = ref.watch(botCountProvider);
     
     return Dialog(
@@ -93,16 +93,16 @@ class BotDifficultyDialog extends ConsumerWidget {
                 ),
               ),
               
-              // Points to Win Section
-              _buildSectionHeader('🏆 Points to Win'),
+              // Number of Rounds Section
+              _buildSectionHeader('🔄 Number of Rounds'),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [50, 100, 150].map((points) {
-                    final isSelected = points == currentPoints;
-                    return _buildPointsChip(
-                      context, ref, points, isSelected,
+                  children: [1, 2, 3, 4, 5].map((rounds) {
+                    final isSelected = rounds == currentRounds;
+                    return _buildRoundsChip(
+                      context, ref, rounds, isSelected,
                     );
                   }).toList(),
                 ),
@@ -260,13 +260,13 @@ class BotDifficultyDialog extends ConsumerWidget {
     );
   }
   
-  Widget _buildPointsChip(BuildContext context, WidgetRef ref, int points, bool isSelected) {
+  Widget _buildRoundsChip(BuildContext context, WidgetRef ref, int rounds, bool isSelected) {
     return GestureDetector(
       onTap: () {
-        ref.read(pointsToWinProvider.notifier).state = points;
+        ref.read(roundsToPlayProvider.notifier).state = rounds;
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           gradient: isSelected ? GameTheme.primaryGradient : null,
           color: isSelected ? null : Colors.white.withValues(alpha: 0.05),
@@ -279,7 +279,7 @@ class BotDifficultyDialog extends ConsumerWidget {
           ),
         ),
         child: Text(
-          '$points',
+          '$rounds',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,

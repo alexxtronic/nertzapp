@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // Added this
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nertz_royale/services/supabase_service.dart';
 import 'package:nertz_royale/ui/screens/profile_screen.dart';
 
 import '../../state/game_provider.dart';
-import '../../state/bot_difficulty_provider.dart';
+import '../../state/economy_provider.dart';
 import '../theme/game_theme.dart';
 import '../widgets/invitations_dialog.dart';
 import '../widgets/bot_difficulty_dialog.dart';
 import '../widgets/currency_display.dart';
 import 'game_screen.dart';
 import 'shop_screen.dart';
+import '../../services/audio_service.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
   const LobbyScreen({super.key});
@@ -33,6 +34,14 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   void initState() {
     super.initState();
     _initAuth();
+    
+    // Start background music on homepage
+    // Start background music on homepage (using selected track)
+    ref.read(selectedMusicAssetProvider.future).then((path) {
+      if (mounted) {
+        AudioService().startBackgroundMusic(path: path);
+      }
+    });
   }
   
   Future<void> _initAuth() async {
@@ -166,7 +175,35 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         },
         transitionDuration: const Duration(milliseconds: 300),
       ),
-    );
+    ).then((_) {
+      _refreshProfile();
+    });
+  }
+
+  Future<void> _handleQuickMatch() async {
+    setState(() => _isLoading = true);
+    try {
+      // 1. Try to find an open lobby
+      final code = await SupabaseService().findOpenLobby();
+      
+      if (!mounted) return;
+      
+      if (code != null) {
+        // Found one! Join it
+        _joinMatch(code);
+      } else {
+        // None found, create new one
+        await _createLobby();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Quick Match Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -227,6 +264,21 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                     
                     const SizedBox(height: 32),
                     Text("GAME MODES", style: GameTheme.label),
+                    const SizedBox(height: 16),
+
+                    // Quick Match - New Feature!
+                    _buildGameModeCard(
+                      title: "Quick Match", 
+                      subtitle: "Find an online game instantly",
+                      icon: Icons.bolt, 
+                      color: Colors.amber, 
+                      onPressed: _isLoading ? null : _handleQuickMatch,
+                      trailing: const Chip(
+                        label: Text("NEW", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        backgroundColor: Colors.red,
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     
                     // Play Offline - with inline settings button
@@ -341,7 +393,10 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                       child: TextButton(
                         onPressed: () async {
                            await Supabase.instance.client.auth.signOut();
-                           // AuthGate triggers rebuild -> LoginScreen
+                           // Navigate back to root so AuthGate shows login screen
+                           if (context.mounted) {
+                             Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                           }
                         },
                         child: const Text('Sign Out', style: TextStyle(color: GameTheme.error)),
                       ),

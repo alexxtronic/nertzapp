@@ -82,12 +82,14 @@ class PlayingCard {
   final Suit suit;
   final Rank rank;
   final String ownerId; // Which player's deck this card belongs to
+  final bool isNertzOrigin; // Whether this card started in the Nertz pile
 
   PlayingCard({
     required this.id,
     required this.suit,
     required this.rank,
     required this.ownerId,
+    this.isNertzOrigin = false,
   });
 
   /// Derived color from suit
@@ -144,12 +146,14 @@ class PlayingCard {
     Suit? suit,
     Rank? rank,
     String? ownerId,
+    bool? isNertzOrigin,
   }) {
     return PlayingCard(
       id: id ?? this.id,
       suit: suit ?? this.suit,
       rank: rank ?? this.rank,
       ownerId: ownerId ?? this.ownerId,
+      isNertzOrigin: isNertzOrigin ?? this.isNertzOrigin,
     );
   }
 
@@ -159,6 +163,7 @@ class PlayingCard {
     'suit': suit.index,
     'rank': rank.index,
     'ownerId': ownerId,
+    'isNertzOrigin': isNertzOrigin,
   };
 
   /// Create from JSON
@@ -167,6 +172,7 @@ class PlayingCard {
     suit: Suit.values[json['suit'] as int],
     rank: Rank.values[json['rank'] as int],
     ownerId: json['ownerId'] as String,
+    isNertzOrigin: json['isNertzOrigin'] as bool? ?? false,
   );
 }
 

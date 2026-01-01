@@ -8,9 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'services/supabase_service.dart';
 import 'services/audio_service.dart';
+import 'state/economy_provider.dart';
 import 'ui/theme/game_theme.dart';
-import 'ui/screens/auth_gate.dart';
-import 'ui/screens/lobby_screen.dart'; // Kept if needed later, or remove if unused in main
+import 'ui/screens/splash_screen.dart';
 
 
 Future<void> main() async {
@@ -38,16 +38,23 @@ Future<void> main() async {
   );
 }
 
-class NertzRoyaleApp extends StatelessWidget {
+class NertzRoyaleApp extends ConsumerWidget {
   const NertzRoyaleApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Listen for music changes and update player
+    ref.listen(selectedMusicAssetProvider, (previous, next) {
+      if (next.hasValue && next.value != null) {
+        AudioService().startBackgroundMusic(path: next.value!);
+      }
+    });
+
     return MaterialApp(
       title: 'Nertz Royale',
       debugShowCheckedModeBanner: false,
       theme: GameTheme.buildTheme(),
-      home: const AuthGate(),
+      home: const SplashScreen(), // Start with video splash
     );
   }
 }

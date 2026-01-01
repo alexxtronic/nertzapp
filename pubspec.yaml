@@ -47,6 +47,9 @@ dependencies:
   flutter_image_compress: ^2.3.0
   path_provider: ^2.1.5
   path: ^1.9.0
+  cached_network_image: ^3.4.1
+  supabase: ^2.10.2
+  video_player: ^2.10.1
 
 dev_dependencies:
   flutter_test:
@@ -68,12 +71,16 @@ flutter:
     - assets/app_icon.png
     - assets/trophies/
     - assets/nertz_button.png
+    - assets/nertz_vid.mp4
     - assets/card_back.png
     - assets/card_backs/
     - assets/coin_icon.png
     - assets/gem_icon.png
     - assets/default_avatar.jpg
     - assets/audio/
+    - assets/background_music/
+    - assets/backgrounds/
+    - assets/avatars/
 
 # App icon configuration
 flutter_launcher_icons:

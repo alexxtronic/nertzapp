@@ -15,6 +15,7 @@ enum MoveType {
   drawOne,
   callNertz,
   voteReset,
+  shuffleDeck,
 }
 
 /// Represents a move request
@@ -104,7 +105,24 @@ class MoveValidator {
         return _validateCallNertz(move, player);
       case MoveType.voteReset:
         return MoveResult.valid(move); // Always valid locally
+      case MoveType.shuffleDeck:
+        return _validateShuffleDeck(move, player);
     }
+  }
+
+  static MoveResult _validateShuffleDeck(Move move, PlayerState player) {
+    // Check if 60 seconds have passed since last playable action
+    if (player.lastPlayableActionTime != null) {
+      final elapsed = DateTime.now().difference(player.lastPlayableActionTime!);
+      if (elapsed.inSeconds < 60) {
+        return MoveResult.invalid(move, 'Must wait ${60 - elapsed.inSeconds} more seconds');
+      }
+    }
+    // Check if there are cards to shuffle
+    if (player.stockPile.isEmpty && player.wastePile.isEmpty) {
+      return MoveResult.invalid(move, 'No cards to shuffle');
+    }
+    return MoveResult.valid(move);
   }
 
   static MoveResult _validateCallNertz(Move move, PlayerState player) {

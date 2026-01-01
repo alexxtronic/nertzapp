@@ -25,12 +25,14 @@ class GameState {
   final List<CenterPile> centerPiles; // 16 generic slots
   GamePhase phase;
   int roundNumber;
-  int pointsToWin; // Mutable: can be set to 50, 100, or 150
+  int maxRounds; // Number of rounds to play (1-5)
   String? hostId;
   String? roundWinnerId;
   DateTime? roundStartTime;
   Set<String> resetVotes;
   DateTime? lastResetTime;
+  String? resetVoteInitiatorId; // Who started the current vote
+  DateTime? matchStartTime;
 
   GameState({
     required this.matchId,
@@ -38,18 +40,20 @@ class GameState {
     required this.centerPiles,
     this.phase = GamePhase.lobby,
     this.roundNumber = 0,
-    this.pointsToWin = 100,
+    this.maxRounds = 3,
     this.hostId,
     this.roundWinnerId,
     this.roundStartTime,
     this.resetVotes = const {},
     this.lastResetTime,
+    this.resetVoteInitiatorId,
+    this.matchStartTime,
   });
   
   bool get isFull => players.length >= maxPlayers;
 
 
-  factory GameState.newMatch(String matchId, String hostId, String hostName, {String? hostSelectedCardBack}) {
+  factory GameState.newMatch(String matchId, String hostId, String hostName, {String? hostSelectedCardBack, String? hostAvatarUrl, int hostTotalXp = 0}) {
     final hostState = PlayerState(
       id: hostId,
       displayName: hostName,
@@ -58,6 +62,8 @@ class GameState {
       stockPile: StockPile([]),
       wastePile: WastePile(),
       selectedCardBack: hostSelectedCardBack,
+      avatarUrl: hostAvatarUrl,
+      totalXp: hostTotalXp,
     );
 
     return GameState(
@@ -66,10 +72,11 @@ class GameState {
       // 18 generic center pile slots (3 rows of 6)
       centerPiles: List.generate(18, (_) => CenterPile()),
       hostId: hostId,
+      matchStartTime: DateTime.now(),
     );
   }
 
-  void addPlayer(String playerId, String displayName, {bool isBot = false, String? selectedCardBack, String? avatarUrl}) {
+  void addPlayer(String playerId, String displayName, {bool isBot = false, String? selectedCardBack, String? avatarUrl, int totalXp = 0}) {
     if (phase != GamePhase.lobby) {
       throw StateError('Cannot add players during active game');
     }
@@ -87,6 +94,7 @@ class GameState {
       isBot: isBot,
       selectedCardBack: selectedCardBack,
       avatarUrl: avatarUrl,
+      totalXp: totalXp,
     );
   }
 
@@ -123,14 +131,17 @@ class GameState {
         id: player.id,
         displayName: player.displayName,
         shuffledDeck: deck,
-
         isBot: player.isBot,
+        avatarUrl: player.avatarUrl,
         selectedCardBack: player.selectedCardBack,
       );
       
       // Preserve player color and scoreTotal across rounds
+      // Initialize lastPlayableActionTime to now so shuffle timer starts immediately
       final updatedState = newState.copyWith(
-        playerColor: player.playerColor, // Preserve color from previous round
+        playerColor: player.playerColor, 
+        avatarUrl: player.avatarUrl, // Double ensure preserved
+        lastPlayableActionTime: DateTime.now(), // Start shuffle timer at round start
       );
       updatedState.scoreTotal = player.scoreTotal; // Preserve total score
       players[player.id] = updatedState;
@@ -161,12 +172,29 @@ class GameState {
 
   void voteForReset(String playerId) {
     if (players.containsKey(playerId)) {
+      // Track who initiated the vote
+      if (resetVotes.isEmpty) {
+        resetVoteInitiatorId = playerId;
+      }
       resetVotes.add(playerId);
+    }
+  }
+  
+  void cancelResetVote(String playerId) {
+    resetVotes.remove(playerId);
+    // If initiator cancels, clear all votes
+    if (playerId == resetVoteInitiatorId) {
+      clearResetVotes();
+    }
+    // If no votes left, clear initiator
+    if (resetVotes.isEmpty) {
+      resetVoteInitiatorId = null;
     }
   }
   
   void clearResetVotes() {
     resetVotes.clear();
+    resetVoteInitiatorId = null;
   }
   
   bool get hasUnanimousResetVote => 
@@ -226,18 +254,36 @@ class GameState {
     return count;
   }
 
+  /// Get players sorted by score (highest first)
+  List<PlayerState> getLeaderboard() {
+    final sorted = players.values.toList()
+      ..sort((a, b) => b.scoreTotal.compareTo(a.scoreTotal));
+    return sorted;
+  }
+
+
+  /// Count cards in center for SCORING (excludes Nertz cards to avoid double counting)
+  int countScorableCenterCards(String playerId) {
+    int count = 0;
+    for (final pile in centerPiles) {
+      count += pile.cards.where((c) => c.ownerId == playerId && !c.isNertzOrigin).length;
+    }
+    return count;
+  }
+
   void endRound(String winnerId) {
     roundWinnerId = winnerId;
     phase = GamePhase.roundEnd;
 
     for (final player in players.values) {
-      final cardsInCenter = countPlayerCardsInCenter(player.id);
-      player.scoreThisRound = player.calculateRoundScore(cardsInCenter);
+      // Use scorable cards (non-Nertz) for center points, as Nertz cards give +2 separately via bonus
+      final scorableCenterCards = countScorableCenterCards(player.id);
+      player.scoreThisRound = player.calculateRoundScore(scorableCenterCards);
       player.scoreTotal += player.scoreThisRound;
     }
 
-    final winners = players.values.where((p) => p.scoreTotal >= pointsToWin);
-    if (winners.isNotEmpty) {
+    // Check if max rounds reached
+    if (roundNumber >= maxRounds) {
       phase = GamePhase.matchEnd;
     }
   }
@@ -269,12 +315,14 @@ class GameState {
     'centerPiles': centerPiles.map((pile) => pile.toJson()).toList(),
     'phase': phase.index,
     'roundNumber': roundNumber,
-    'pointsToWin': pointsToWin,
+    'maxRounds': maxRounds,
     'hostId': hostId,
     'roundWinnerId': roundWinnerId,
     'roundStartTime': roundStartTime?.toIso8601String(),
     'resetVotes': resetVotes.toList(),
     'lastResetTime': lastResetTime?.toIso8601String(),
+    'resetVoteInitiatorId': resetVoteInitiatorId,
+    'matchStartTime': matchStartTime?.toIso8601String(),
   };
 
   factory GameState.fromJson(Map<String, dynamic> json) {
@@ -291,7 +339,7 @@ class GameState {
       centerPiles: centerPiles,
       phase: GamePhase.values[json['phase'] as int],
       roundNumber: json['roundNumber'] as int,
-      pointsToWin: json['pointsToWin'] as int? ?? 100,
+      maxRounds: json['maxRounds'] as int? ?? json['pointsToWin'] as int? ?? 3,
       hostId: json['hostId'] as String?,
       roundWinnerId: json['roundWinnerId'] as String?,
       roundStartTime: json['roundStartTime'] != null 
@@ -300,6 +348,10 @@ class GameState {
       resetVotes: (json['resetVotes'] as List?)?.map((e) => e as String).toSet() ?? {},
       lastResetTime: json['lastResetTime'] != null 
         ? DateTime.parse(json['lastResetTime']) 
+        : null,
+      resetVoteInitiatorId: json['resetVoteInitiatorId'] as String?,
+      matchStartTime: json['matchStartTime'] != null
+        ? DateTime.parse(json['matchStartTime'])
         : null,
     );
   }

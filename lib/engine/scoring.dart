@@ -14,7 +14,7 @@ class Scoring {
     final scores = <String, RoundScore>{};
 
     for (final player in gameState.players.values) {
-      final cardsInCenter = gameState.countPlayerCardsInCenter(player.id);
+      final cardsInCenter = gameState.countScorableCenterCards(player.id);
       final cardsInNertz = player.nertzPile.remaining;
       final roundScore = calculateRoundScore(cardsInCenter, cardsInNertz);
 

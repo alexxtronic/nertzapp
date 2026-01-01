@@ -4,10 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/game_state.dart';
-import '../engine/game_engine.dart';
 import '../engine/move_validator.dart'; // For Move
-import 'protocol.dart';
-import 'game_client.dart'; // For enums/typedefs
+import 'game_client.dart'; // For enums/typedefs (also provides protocol exports)
 import '../services/supabase_service.dart'; // To access lobby stream
 
 class SupabaseGameClient {
@@ -50,7 +48,7 @@ class SupabaseGameClient {
     onConnectionChanged?.call(false);
   }
   
-  void joinMatch(String matchId, {String? selectedCardBack}) {
+  void joinMatch(String matchId, {String? selectedCardBack, String? avatarUrl}) {
     debugPrint('📡 joinMatch subscribing to channel: game:$matchId');
     if (_channel != null) {
       _channel!.unsubscribe();
@@ -89,6 +87,7 @@ class SupabaseGameClient {
              playerId: playerId, 
              displayName: displayName,
              selectedCardBack: selectedCardBack,
+             avatarUrl: avatarUrl,
            ));
         } else if (status == RealtimeSubscribeStatus.closed) {
            _connectionState = ConnectionState.disconnected;

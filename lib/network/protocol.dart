@@ -117,12 +117,14 @@ class JoinMatchMessage extends GameMessage {
   final String playerId;
   final String displayName;
   final String? selectedCardBack;
+  final String? avatarUrl;
   
   JoinMatchMessage({
     required this.matchId,
     required this.playerId,
     required this.displayName,
     this.selectedCardBack,
+    this.avatarUrl,
   });
   
   @override
@@ -131,6 +133,7 @@ class JoinMatchMessage extends GameMessage {
     'playerId': playerId,
     'displayName': displayName,
     'selectedCardBack': selectedCardBack,
+    'avatarUrl': avatarUrl,
   };
   
   factory JoinMatchMessage.fromJson(Map<String, dynamic> json) => JoinMatchMessage(
@@ -138,6 +141,7 @@ class JoinMatchMessage extends GameMessage {
     playerId: json['playerId'] as String,
     displayName: json['displayName'] as String,
     selectedCardBack: json['selectedCardBack'] as String?,
+    avatarUrl: json['avatarUrl'] as String?,
   );
 }
 

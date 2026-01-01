@@ -53,6 +53,8 @@ class GameEngine {
         return _executeCallNertz(player);
       case MoveType.voteReset:
         return _executeVoteReset(move, player, gameState);
+      case MoveType.shuffleDeck:
+        return _executeShuffleDeck(player, gameState);
     }
   }
 
@@ -141,6 +143,24 @@ class GameEngine {
     } else {
       gameState.voteForReset(player.id);
     }
+    return ExecutionResult.success();
+  }
+
+  static ExecutionResult _executeShuffleDeck(PlayerState player, GameState gameState) {
+    // Combine stock and waste, shuffle, and reset to stock
+    final allCards = [...player.stockPile.cards, ...player.wastePile.cards];
+    allCards.shuffle();
+    
+    // Clear both piles
+    player.stockPile.cards.clear();
+    player.wastePile.cards.clear();
+    
+    // Refill stock with shuffled cards
+    player.stockPile.refill(allCards);
+    
+    // Reset the lastPlayableActionTime to current time
+    // (done in game_provider to update PlayerState properly)
+    
     return ExecutionResult.success();
   }
 

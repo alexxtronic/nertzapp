@@ -1,7 +1,6 @@
 // import 'dart:io'; // Removed for Web compatibility
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config.dart';
 import 'dart:math'; // For Random.secure()
@@ -256,23 +255,190 @@ class SupabaseService {
 
   
   /// Increment win count for current user
-  Future<void> incrementWin() async {
+  /// Increment win count for current user and update stats
+  Future<void> incrementWin({int? matchDurationSeconds}) async {
     if (currentUser == null) return;
     
     try {
-      // 1. Get current wins
+      // 1. Get current stats
       final profile = await getProfile();
       final currentWins = (profile?['wins'] as int?) ?? 0;
+      final currentStreak = (profile?['win_streak'] as int?) ?? 0;
+      final currentBestTime = (profile?['best_time'] as int?);
       
-      // 2. Update wins + 1
+      final updates = <String, dynamic>{
+        'wins': currentWins + 1,
+        'win_streak': currentStreak + 1,
+      };
+
+      // 2. Update Best Time if applicable
+      if (matchDurationSeconds != null) {
+        // If no best time exists, or new time is faster (lower)
+        if (currentBestTime == null || matchDurationSeconds < currentBestTime) {
+           updates['best_time'] = matchDurationSeconds;
+           print('⚡ New Best Time: $matchDurationSeconds seconds!');
+        }
+      }
+      
+      // 3. Commit updates
       await _supabase
           .from('profiles')
-          .update({'wins': currentWins + 1})
+          .update(updates)
           .eq('id', currentUser!.id);
           
-      print('🏆 Win recorded! Total: ${currentWins + 1}');
+      print('🏆 Win recorded! Total: ${currentWins + 1}, Streak: ${currentStreak + 1}');
     } catch (e) {
       print('Error incrementing wins: $e');
+    }
+  }
+
+  /// Record a loss (resets win streak)
+  Future<void> recordLoss() async {
+     if (currentUser == null) return;
+     try {
+       await _supabase
+           .from('profiles')
+           .update({'win_streak': 0})
+           .eq('id', currentUser!.id);
+       print('💔 Streak reset on loss.');
+     } catch (e) {
+       print('Error recording loss: $e');
+     }
+  }
+
+  /// Add XP to current user (direct update)
+  /// Returns new total XP, or null on error
+  Future<int?> addXP(int amount) async {
+    if (currentUser == null) return null;
+    if (amount <= 0) return null;
+
+    try {
+      // 1. Get current XP
+      final profile = await getProfile();
+      final currentXp = (profile?['total_xp'] as int?) ?? 0;
+      
+      // 2. Calculate new total
+      final newTotal = currentXp + amount;
+      
+      // 3. Update DB
+      await _supabase
+          .from('profiles')
+          .update({'total_xp': newTotal})
+          .eq('id', currentUser!.id);
+      
+      print('⭐ Added $amount XP! New total: $newTotal');
+      return newTotal;
+    } catch (e) {
+      print('Error adding XP: $e');
+      return null;
+    }
+  }
+
+  /// Get global leaderboard (top players by XP)
+  Future<List<Map<String, dynamic>>> getLeaderboard({int limit = 100}) async {
+    try {
+      final result = await _supabase.rpc('get_leaderboard', params: {
+        'p_limit': limit,
+      });
+      
+      if (result == null) return [];
+      return List<Map<String, dynamic>>.from(result as List);
+    } catch (e) {
+      print('Error fetching leaderboard: $e');
+      return [];
+    }
+  }
+
+  // --- Quick Match (Matchmaking) ---
+
+  /// Join the matchmaking queue
+  Future<void> joinQueue() async {
+    if (currentUser == null) return;
+    
+    // First, leave any existing queue
+    await leaveQueue();
+    
+    // Add to queue
+    final profile = await getProfile();
+    await _supabase.from('matchmaking_queue').insert({
+      'user_id': currentUser!.id,
+      'username': profile?['username'] ?? 'Player',
+      'avatar_url': profile?['avatar_url'],
+      'status': 'waiting',
+      'joined_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Leave queue
+  Future<void> leaveQueue() async {
+    if (currentUser == null) return;
+    try {
+      await _supabase
+          .from('matchmaking_queue')
+          .delete()
+          .eq('user_id', currentUser!.id);
+    } catch (_) {
+      // Ignore errors if already removed
+    }
+  }
+
+  /// Stream queue changes (to see if we are matched)
+  Stream<List<Map<String, dynamic>>> getQueueStream() {
+    return _supabase
+        .from('matchmaking_queue')
+        .stream(primaryKey: ['id'])
+        .order('joined_at');
+  }
+
+  /// Find an open lobby (Quick Match)
+  /// Returns the lobby CODE if found, or null
+  Future<String?> findOpenLobby() async {
+    try {
+      // Find lobbies that are waiting and created recently
+      // Note: We can't easily count members in a single query without a view/function
+      // So we fetch a few waiting lobbies and check their player count
+      final response = await _supabase
+          .from('lobbies')
+          .select('id, code, created_at, players!inner(count)') // Inner join players to get count
+          .eq('status', 'waiting')
+          .order('created_at', ascending: false)
+          .limit(10);
+      
+      // Filter client-side for < 4 players
+      for (final lobby in response) {
+        // Supabase returns count as a list of objects usually with inner join?
+        // Actually, select count is tricky without a view.
+        // SIMPLER: Just fetch lobbies, then check players table for each.
+      }
+      
+      // SIMPLER APPROACH:
+      // Fetch latest 5 waiting lobbies
+      final lobbies = await _supabase
+          .from('lobbies')
+          .select('id, code')
+          .eq('status', 'waiting')
+          .neq('host_id', currentUser!.id) // Don't join my own abandoned ones
+          .order('created_at', ascending: false)
+          .limit(5);
+          
+      for (final l in lobbies) {
+        final code = l['code'] as String;
+        final lobbyId = l['id'] as String;
+        
+        // Count players
+        final players = await _supabase
+            .from('players')
+            .count(CountOption.exact)
+            .eq('lobby_id', lobbyId);
+            
+        if (players < 4) {
+          return code; // Found one!
+        }
+      }
+      return null; // None found
+    } catch (e) {
+      print('Quick Match Search Error: $e');
+      return null;
     }
   }
 }

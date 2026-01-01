@@ -23,6 +23,8 @@ class PlayerState {
   final int? playerColor; // Stored as ARGB int for JSON serialization
   final String? selectedCardBack;
   final DateTime? lastMoveTime;
+  final DateTime? lastPlayableActionTime; // Tracks last play to work/center pile for shuffle timer
+  final int totalXp; // Total cumulative XP for ranking
 
   PlayerState({
     required this.id,
@@ -41,12 +43,18 @@ class PlayerState {
     this.playerColor,
     this.selectedCardBack,
     this.lastMoveTime,
+    this.lastPlayableActionTime,
+    this.totalXp = 0,
   });
 
   PlayerRank get rank {
-    if (wins >= 50) return PlayerRank.platinum;
-    if (wins >= 25) return PlayerRank.gold;
-    if (wins >= 10) return PlayerRank.silver;
+    if (totalXp >= 150000) return PlayerRank.legend;
+    if (totalXp >= 75000) return PlayerRank.grandmaster;
+    if (totalXp >= 25000) return PlayerRank.master;
+    if (totalXp >= 10000) return PlayerRank.diamond;
+    if (totalXp >= 5000) return PlayerRank.platinum;
+    if (totalXp >= 2500) return PlayerRank.gold;
+    if (totalXp >= 1000) return PlayerRank.silver;
     return PlayerRank.bronze;
   }
 
@@ -59,10 +67,11 @@ class PlayerState {
     int wins = 0,
     bool isBot = false,
     String? selectedCardBack,
+    int totalXp = 0,
   }) {
     assert(shuffledDeck.length == 52, 'Deck must have 52 cards');
 
-    final nertzCards = shuffledDeck.sublist(0, 10);
+    final nertzCards = shuffledDeck.sublist(0, 10).map((c) => c.copyWith(isNertzOrigin: true)).toList();
     final workCards = shuffledDeck.sublist(10, 14);
     final stockCards = shuffledDeck.sublist(14);
 
@@ -83,6 +92,7 @@ class PlayerState {
       isBot: isBot,
       playerColor: null, // Color assigned later by game logic
       selectedCardBack: selectedCardBack,
+      totalXp: totalXp,
     );
   }
 
@@ -101,8 +111,16 @@ class PlayerState {
 
   int calculateRoundScore(int cardsPlayedToCenter) {
     final centerPoints = cardsPlayedToCenter;
-    final nertzPenalty = nertzPile.remaining * 2;
-    return centerPoints - nertzPenalty;
+    // New Scoring: +2 points for every Nertz card CLEARED
+    // instead of -2 penalty for cards left.
+    // Nertz pile starts with 10 cards.
+    final cardsCleared = 10 - nertzPile.remaining;
+    final nertzBonus = cardsCleared * 2;
+    
+    // New Penalty: -1 for every card left (increases stakes)
+    final penalty = nertzPile.remaining;
+    
+    return centerPoints + nertzBonus - penalty;
   }
 
   List<PlayingCard> getPlayableCards() {
@@ -170,7 +188,10 @@ class PlayerState {
     int? wins,
     bool? isBot,
     int? playerColor,
+    String? selectedCardBack,
     DateTime? lastMoveTime,
+    DateTime? lastPlayableActionTime,
+    int? totalXp,
   }) {
     return PlayerState(
       id: id ?? this.id,
@@ -188,7 +209,9 @@ class PlayerState {
       isBot: isBot ?? this.isBot,
       playerColor: playerColor ?? this.playerColor,
       lastMoveTime: lastMoveTime ?? this.lastMoveTime,
+      lastPlayableActionTime: lastPlayableActionTime ?? this.lastPlayableActionTime,
       selectedCardBack: selectedCardBack ?? this.selectedCardBack,
+      totalXp: totalXp ?? this.totalXp,
     );
   }
 
@@ -208,7 +231,9 @@ class PlayerState {
     'isBot': isBot,
     'playerColor': playerColor,
     'lastMoveTime': lastMoveTime?.toIso8601String(),
+    'lastPlayableActionTime': lastPlayableActionTime?.toIso8601String(),
     'selectedCardBack': selectedCardBack,
+    'totalXp': totalXp,
   };
 
   factory PlayerState.fromJson(Map<String, dynamic> json) => PlayerState(
@@ -227,11 +252,13 @@ class PlayerState {
     isBot: json['isBot'] as bool? ?? false,
     playerColor: json['playerColor'] as int?,
     lastMoveTime: json['lastMoveTime'] != null ? DateTime.parse(json['lastMoveTime']) : null,
+    lastPlayableActionTime: json['lastPlayableActionTime'] != null ? DateTime.parse(json['lastPlayableActionTime']) : null,
     selectedCardBack: json['selectedCardBack'] as String?,
+    totalXp: json['totalXp'] as int? ?? 0,
   );
 }
 
-enum PlayerRank { bronze, silver, gold, platinum }
+enum PlayerRank { bronze, silver, gold, platinum, diamond, master, grandmaster, legend }
 
 enum PileType { nertz, work, stock, waste, center }
 

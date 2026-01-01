@@ -22,6 +22,20 @@ enum BotDifficulty {
     }
   }
   
+  /// Get hesitation delay in milliseconds before placing cards on center pile
+  int get centerPileDelayMs {
+    switch (this) {
+      case BotDifficulty.easy:
+        return 4000; // 4 seconds
+      case BotDifficulty.medium:
+        return 3000; // 3 seconds
+      case BotDifficulty.hard:
+        return 2000; // 2 seconds
+      case BotDifficulty.extreme:
+        return 1000; // 1 second
+    }
+  }
+  
   /// Display name for UI
   String get displayName {
     switch (this) {

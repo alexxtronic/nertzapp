@@ -10,16 +10,59 @@ import '../theme/game_theme.dart';
 import 'lobby_screen.dart';
 import 'game_screen.dart';
 
-class ResultsScreen extends ConsumerWidget {
-  const ResultsScreen({super.key});
+import 'package:nertz_royale/services/audio_service.dart';
+import 'package:nertz_royale/models/player_state.dart';
+
+class ResultsScreen extends ConsumerStatefulWidget {
+  final int? oldXp;
+  final int? newXp;
+  final List<PlayerState> leaderboard;
+  final String currentUserId;
+
+  const ResultsScreen({
+    super.key, 
+    this.oldXp, 
+    this.newXp,
+    required this.leaderboard,
+    required this.currentUserId,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final gameState = ref.watch(gameStateProvider);
-    final leaderboard = ref.watch(leaderboardProvider);
-    final currentPlayerId = ref.watch(playerIdProvider);
+  ConsumerState<ResultsScreen> createState() => _ResultsScreenState();
+}
+
+class _ResultsScreenState extends ConsumerState<ResultsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Check for rank up and play sound
+    if (widget.oldXp != null && widget.newXp != null) {
+      if (_hasRankedUp(widget.oldXp!, widget.newXp!)) {
+        AudioService().playApplause();
+      }
+    }
+  }
+
+  bool _hasRankedUp(int oldXp, int newXp) {
+    String getRankName(int xp) {
+      if (xp < 1000) return 'Bronze';
+      if (xp < 2500) return 'Silver';
+      if (xp < 5000) return 'Gold';
+      return 'Platinum';
+    }
+    return getRankName(oldXp) != getRankName(newXp);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Use passed data instead of watching provider (which might be null)
+    final leaderboard = widget.leaderboard;
+    final currentPlayerId = widget.currentUserId;
     
-    if (gameState == null || leaderboard.isEmpty) {
+    debugPrint('📊 RESULTS: leaderboard.length=${leaderboard.length}');
+    
+    if (leaderboard.isEmpty) {
+      debugPrint('❌ RESULTS: Showing empty state - leaderboard empty? true');
       return Scaffold(
         body: Container(
           decoration: const BoxDecoration(
@@ -84,15 +127,20 @@ class ResultsScreen extends ConsumerWidget {
         child: SafeArea(
           child: Column(
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
               _buildWinnerSection(winner, isCurrentPlayerWinner),
-              const SizedBox(height: 32),
+              if (widget.oldXp != null && widget.newXp != null) ...[
+                 const SizedBox(height: 16),
+                 _buildXpProgressBar(widget.oldXp!, widget.newXp!),
+              ],
+              const SizedBox(height: 16),
               if (!isCurrentPlayerWinner)
                 _buildYourResult(currentPlayerRank, leaderboard.length),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Expanded(
                 child: _buildLeaderboard(leaderboard, currentPlayerId),
               ),
+              const SizedBox(height: 16),
               _buildActions(context, ref),
               const SizedBox(height: 24),
             ],
@@ -102,7 +150,7 @@ class ResultsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWinnerSection(player, bool isYou) {
+  Widget _buildWinnerSection(PlayerState player, bool isYou) {
     return Column(
       children: [
         TweenAnimationBuilder<double>(
@@ -224,7 +272,7 @@ class ResultsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLeaderboard(List players, String currentPlayerId) {
+  Widget _buildLeaderboard(List<PlayerState> players, String currentPlayerId) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.all(16),
@@ -370,6 +418,118 @@ class ResultsScreen extends ConsumerWidget {
               ),
               child: const Text('PLAY AGAIN'),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildXpProgressBar(int oldXp, int newXp) {
+    // Rank Logic
+    // Bronze: 0-999, Silver: 1000-2499, Gold: 2500-4999, Platinum: 5000+
+    int getNextRankThreshold(int xp) {
+      if (xp < 1000) return 1000;
+      if (xp < 2500) return 2500;
+      if (xp < 5000) return 5000;
+      if (xp < 10000) return 10000;
+      if (xp < 25000) return 25000;
+      if (xp < 75000) return 75000;
+      if (xp < 150000) return 150000;
+      return 1000000; // Legend cap (or infinite)
+    }
+    
+    int getStartRankThreshold(int xp) {
+      if (xp < 1000) return 0;
+      if (xp < 2500) return 1000;
+      if (xp < 5000) return 2500;
+      if (xp < 10000) return 5000;
+      if (xp < 25000) return 10000;
+      if (xp < 75000) return 25000;
+      if (xp < 150000) return 75000;
+      return 150000;
+    }
+    
+    String getRankName(int xp) {
+      if (xp < 1000) return 'Bronze';
+      if (xp < 2500) return 'Silver';
+      if (xp < 5000) return 'Gold';
+      if (xp < 10000) return 'Platinum';
+      if (xp < 25000) return 'Diamond';
+      if (xp < 75000) return 'Master';
+      if (xp < 150000) return 'Grandmaster';
+      return 'Legend';
+    }
+
+    final startThreshold = getStartRankThreshold(newXp);
+    final nextThreshold = getNextRankThreshold(newXp);
+    final rankName = getRankName(newXp);
+    
+    // Calculate progress normalized to current rank bracket
+    final totalRange = nextThreshold - startThreshold;
+    final progress = (newXp - startThreshold) / totalRange;
+    final oldProgress = (oldXp - startThreshold) / totalRange;
+    
+    final didRankUp = getRankName(oldXp) != rankName;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: GameTheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: didRankUp ? GameTheme.accent : Colors.transparent, width: 2),
+        boxShadow: didRankUp ? [
+          BoxShadow(color: GameTheme.accent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 2)
+        ] : null,
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(didRankUp ? 'RANK UP!' : 'RANK PROGRESS', style: TextStyle(color: didRankUp ? GameTheme.accent : GameTheme.textSecondary, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+              Text('$newXp XP', style: const TextStyle(fontWeight: FontWeight.bold, color: GameTheme.textPrimary)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Stack(
+            children: [
+              // Background Bar
+              Container(
+                height: 16,
+                decoration: BoxDecoration(
+                  color: GameTheme.textSecondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              // Filter Bar Animation
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: oldProgress.clamp(0.0, 1.0), end: progress.clamp(0.0, 1.0)),
+                duration: const Duration(seconds: 2),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) => FractionallySizedBox(
+                  widthFactor: value,
+                  child: Container(
+                    height: 16,
+                    decoration: BoxDecoration(
+                      gradient: GameTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                         BoxShadow(color: GameTheme.primary.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2))
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(rankName, style: const TextStyle(fontWeight: FontWeight.bold, color: GameTheme.textPrimary)),
+              Text('${nextThreshold - newXp} XP to next rank', style: const TextStyle(color: GameTheme.textSecondary, fontSize: 12)),
+            ],
           ),
         ],
       ),

@@ -2,6 +2,7 @@ Resolving dependencies...
 Downloading packages...
   app_links 6.4.1 (7.0.0 available)
   characters 1.4.0 (1.4.1 available)
+  confetti 0.7.0 (0.8.0 available)
   flutter_lints 5.0.0 (6.0.0 available)
   flutter_riverpod 2.6.1 (3.1.0 available)
   lints 5.1.1 (6.0.0 available)
@@ -10,71 +11,163 @@ Downloading packages...
   riverpod 2.6.1 (3.1.0 available)
   test_api 0.7.7 (0.7.8 available)
 Got dependencies!
-9 packages have newer versions incompatible with dependency constraints.
+10 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
-Compiling lib/main.dart for the Web...                          
-Wasm dry run succeeded. Consider building and testing your application with the `--wasm` flag. See docs for more info: https://docs.flutter.dev/platform-integration/web/wasm
-Use --no-wasm-dry-run to disable these warnings.
-Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
-lib/engine/move_validator.dart:15:3:
-Error: 'moveStack' is already declared in this scope.
-  moveStack,
-  ^^^^^^^^^
-lib/engine/move_validator.dart:14:3:
-Info: Previous declaration of 'moveStack'.
-  moveStack,
-  ^^^^^^^^^
-lib/engine/game_engine.dart:41:18:
-Error: The type 'MoveType' is not exhaustively matched by the switch cases since it doesn't match 'MoveType.moveStack'.
- - 'MoveType' is from 'package:nertz_royale/engine/move_validator.dart' ('lib/engine/move_validator.dart').
-    switch (move.type) {
-                 ^
-lib/engine/move_validator.dart:92:18:
-Error: The type 'MoveType' is not exhaustively matched by the switch cases since it doesn't match 'MoveType.moveStack'.
- - 'MoveType' is from 'package:nertz_royale/engine/move_validator.dart' ('lib/engine/move_validator.dart').
-    switch (move.type) {
-                 ^
-Error: Compilation failed.
-  Command: /opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart compile js --platform-binaries=/opt/homebrew/share/flutter/bin/cache/flutter_web_sdk/kernel --invoker=flutter_tool -Ddart.vm.product=true -DFLUTTER_VERSION=3.38.5 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=f6ff1529fd -DFLUTTER_ENGINE_REVISION=1527ae0ec5 -DFLUTTER_DART_VERSION=3.10.4 -DFLUTTER_WEB_USE_SKIA=true -DFLUTTER_WEB_USE_SKWASM=false -DFLUTTER_WEB_CANVASKIT_URL=https://www.gstatic.com/flutter-canvaskit/1527ae0ec577a4ef50e65f6fefcfc1326707d9bf/ --native-null-assertions --no-source-maps -O4 --minify -o /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/.dart_tool/flutter_build/80f848b790044eb72c08575ecb0517ac/app.dill --packages=/Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/.dart_tool/package_config.json --cfe-only /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/.dart_tool/flutter_build/80f848b790044eb72c08575ecb0517ac/main.dart
-#0      RunResult.throwException (package:flutter_tools/src/base/process.dart:153:5)
-#1      _DefaultProcessUtils.run (package:flutter_tools/src/base/process.dart:379:19)
-<asynchronous suspension>
-#2      Dart2JSTarget.build (package:flutter_tools/src/build_system/targets/web.dart:207:5)
-<asynchronous suspension>
-#3      _BuildInstance._invokeInternal (package:flutter_tools/src/build_system/build_system.dart:895:9)
-<asynchronous suspension>
-#4      Future.wait.<anonymous closure> (dart:async/future.dart:546:21)
-<asynchronous suspension>
-#5      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:833:32)
-<asynchronous suspension>
-#6      Future.wait.<anonymous closure> (dart:async/future.dart:546:21)
-<asynchronous suspension>
-#7      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:833:32)
-<asynchronous suspension>
-#8      FlutterBuildSystem.build (package:flutter_tools/src/build_system/build_system.dart:653:16)
-<asynchronous suspension>
-#9      WebBuilder.buildWeb (package:flutter_tools/src/web/compile.dart:94:34)
-<asynchronous suspension>
-#10     BuildWebCommand.runCommand (package:flutter_tools/src/commands/build_web.dart:296:5)
-<asynchronous suspension>
-#11     FlutterCommand.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command.dart:1559:27)
-<asynchronous suspension>
-#12     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
-<asynchronous suspension>
-#13     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
-<asynchronous suspension>
-#14     FlutterCommandRunner.runCommand.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:487:9)
-<asynchronous suspension>
-#15     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
-<asynchronous suspension>
-#16     FlutterCommandRunner.runCommand (package:flutter_tools/src/runner/flutter_command_runner.dart:422:5)
-<asynchronous suspension>
-#17     run.<anonymous closure>.<anonymous closure> (package:flutter_tools/runner.dart:104:11)
-<asynchronous suspension>
-#18     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
-<asynchronous suspension>
-#19     main (package:flutter_tools/executable.dart:103:3)
-<asynchronous suspension>
+Warning: Building for device with codesigning disabled. You will have to manually codesign before deploying to device.
+Building com.nertzroyale.nertzRoyale for device (ios)...
+Running Xcode build...                                          
+Xcode build done.                                           17.9s
+Failed to build iOS app
+Error output from Xcode build:
+↳
+    ** BUILD FAILED **
 
-Compiling lib/main.dart for the Web...                             18.2s
-Error: Failed to compile application for the Web.
+
+Xcode's output:
+↳
+    Writing result bundle at path:
+    	/var/folders/fc/95mqmsns26z3h36p0zccszvh0000gn/T/flutter_tools.rnbwTg/flutter_ios_build_temp_dirxeKLXK/temporary_xcresult_bundle
+
+    /Users/alexdamore/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.6/ios/url_launcher_ios/Sources/url_launcher_ios/URLLauncherPlugin.swift:22:26: warning: 'keyWindow' was deprecated in iOS 13.0: Should not be used for applications that support multiple scenes as it returns a key window across all connected scenes
+        UIApplication.shared.keyWindow?.rootViewController?.topViewController
+                             ^
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/dsp/dec_neon.c:1467:38: warning: variable 'sum_left' may be uninitialized when used here [-Wconditional-uninitialized]
+     1467 |     const uint16x8_t sum = vaddq_u16(sum_left, sum_top);
+          |                                      ^~~~~~~~
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/dsp/dec_neon.c:1432:3: note: variable 'sum_left' is declared here
+     1432 |   uint16x8_t sum_left;
+          |   ^
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/dsp/dec_neon.c:1467:48: warning: variable 'sum_top' may be uninitialized when used here [-Wconditional-uninitialized]
+     1467 |     const uint16x8_t sum = vaddq_u16(sum_left, sum_top);
+          |                                                ^~~~~~~
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/dsp/dec_neon.c:1431:3: note: variable 'sum_top' is declared here
+     1431 |   uint16x8_t sum_top;
+          |   ^
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/dsp/dec_neon.c:1556:38: warning: variable 'sum_left' may be uninitialized when used here [-Wconditional-uninitialized]
+     1556 |     const uint16x8_t sum = vaddq_u16(sum_left, sum_top);
+          |                                      ^~~~~~~~
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/dsp/dec_neon.c:1515:3: note: variable 'sum_left' is declared here
+     1515 |   uint16x8_t sum_left;
+          |   ^
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/dsp/dec_neon.c:1556:48: warning: variable 'sum_top' may be uninitialized when used here [-Wconditional-uninitialized]
+     1556 |     const uint16x8_t sum = vaddq_u16(sum_left, sum_top);
+          |                                                ^~~~~~~
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/dsp/dec_neon.c:1514:3: note: variable 'sum_top' is declared here
+     1514 |   uint16x8_t sum_top;
+          |   ^
+    4 warnings generated.
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/enc/backward_references_enc.c:720:12: warning: variable 'best_offset' may be uninitialized when used here [-Wconditional-uninitialized]
+      720 |           (best_offset << MAX_LENGTH_BITS) | (uint32_t)best_length;
+          |            ^~~~~~~~~~~
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/libwebp/src/enc/backward_references_enc.c:652:20: note: initialize the variable 'best_offset' to silence this warning
+      652 |     int best_offset;
+          |                    ^
+          |                     = 0
+    1 warning generated.
+    /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/SYPictureMetadata/SYMetadataExif.m:41:65: warning: 'kCGImagePropertyExifSubsecTimeOrginal' is deprecated: first deprecated in iOS 10.0 - No longer supported [-Wdeprecated-declarations]
+       41 |              SYStringSel(subsecTimeOriginal):       (NSString *)kCGImagePropertyExifSubsecTimeOrginal,
+          |                                                                 ^
+    In module 'ImageIO' imported from /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/SYPictureMetadata/SYMetadataExif.m:10:
+    /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.1.sdk/System/Library/Frameworks/ImageIO.framework/Headers/CGImageProperties.h:252:34: note: 'kCGImagePropertyExifSubsecTimeOrginal' has been explicitly marked deprecated here
+      252 | IMAGEIO_EXTERN const CFStringRef kCGImagePropertyExifSubsecTimeOrginal IMAGEIO_AVAILABLE_BUT_DEPRECATED(10.4, 10.11, 4.0, 10.0);
+          |                                  ^
+    1 warning generated.
+    /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/SYPictureMetadata/SYMetadata.m:167:5: warning: 'ALAssetRepresentation' is deprecated: first deprecated in iOS 9 - Use PHImageRequestOptions with the PHImageManager from the Photos framework instead [-Wdeprecated-declarations]
+      167 |     ALAssetRepresentation *representation = [assetAtUrl defaultRepresentation];
+          |     ^
+    In module 'AssetsLibrary' imported from /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/SYPictureMetadata/SYMetadata.m:14:
+    /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.1.sdk/System/Library/Frameworks/AssetsLibrary.framework/Headers/ALAssetRepresentation.h:20:12: note: 'ALAssetRepresentation' has been explicitly marked deprecated here
+       20 | @interface ALAssetRepresentation : NSObject {
+          |            ^
+    /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/SYPictureMetadata/SYMetadata.m:167:57: warning: 'defaultRepresentation' is deprecated: first deprecated in iOS 9 - Use PHImageRequestOptions with the PHImageManager from the Photos framework instead [-Wdeprecated-declarations]
+      167 |     ALAssetRepresentation *representation = [assetAtUrl defaultRepresentation];
+          |                                                         ^
+    In module 'AssetsLibrary' imported from /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/SYPictureMetadata/SYMetadata.m:14:
+    /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.1.sdk/System/Library/Frameworks/AssetsLibrary.framework/Headers/ALAsset.h:49:1: note: 'defaultRepresentation' has been explicitly marked deprecated here
+       49 | - (ALAssetRepresentation *)defaultRepresentation AL_DEPRECATED(4, "Use PHImageRequestOptions with the PHImageManager from the Photos framework instead");
+          | ^
+    /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/SYPictureMetadata/SYMetadata.m:168:28: warning: 'metadata' is deprecated: first deprecated in iOS 9 - Use CGImageSourceCopyPropertiesAtIndex() to retrieve metadata from an image returned by the PHImageManager from the Photos framework instead [-Wdeprecated-declarations]
+      168 |     return [representation metadata];
+          |                            ^
+    In module 'AssetsLibrary' imported from /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/SYPictureMetadata/SYMetadata.m:14:
+    /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.1.sdk/System/Library/Frameworks/AssetsLibrary.framework/Headers/ALAssetRepresentation.h:56:1: note: 'metadata' has been explicitly marked deprecated here
+       56 | - (NSDictionary *)metadata AL_DEPRECATED(4, "Use CGImageSourceCopyPropertiesAtIndex() to retrieve metadata from an image returned by the PHImageManager from the Photos framework instead");
+          | ^
+    12 warnings generated.
+    /Users/alexdamore/.pub-cache/hosted/pub.dev/audioplayers_darwin-6.3.0/darwin/audioplayers_darwin/Sources/audioplayers_darwin/AudioContext.swift:88:17: warning: 'allowBluetooth' was deprecated in iOS 8.0: renamed to 'AVAudioSession.CategoryOptions.allowBluetoothHFP'
+            return .allowBluetooth
+                    ^
+    /Users/alexdamore/.pub-cache/hosted/pub.dev/audioplayers_darwin-6.3.0/darwin/audioplayers_darwin/Sources/audioplayers_darwin/AudioContext.swift:88:17: note: use 'AVAudioSession.CategoryOptions.allowBluetoothHFP' instead
+            return .allowBluetooth
+                    ^~~~~~~~~~~~~~
+                    AVAudioSession.CategoryOptions.allowBluetoothHFP
+    /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/CompressFileHandler.m:109:16: warning: unused variable 'swf' [-Wunused-variable]
+      109 |     const char swf[3] = {'F', 'W', 'S'};
+          |                ^~~
+    /Users/alexdamore/.pub-cache/hosted/pub.dev/flutter_image_compress_common-1.0.6/ios/Classes/CompressFileHandler.m:110:16: warning: unused variable 'swc' [-Wunused-variable]
+      110 |     const char swc[3] = {'C', 'W', 'S'};
+          |                ^~~
+    2 warnings generated.
+    /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/SDWebImageWebPCoder/SDWebImageWebPCoder/Classes/SDImageWebPCoder.m:673:33: warning: 'CGColorSpaceCreateWithICCProfile' is deprecated: first deprecated in iOS 11.0 - No longer supported [-Wdeprecated-declarations]
+      673 |                 colorSpaceRef = CGColorSpaceCreateWithICCProfile((__bridge CFDataRef)profileData);
+          |                                 ^
+    In module 'UIKit' imported from /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale/ios/Pods/Target Support Files/SDWebImageWebPCoder/SDWebImageWebPCoder-prefix.pch:2:
+    In module 'CoreGraphics' imported from /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.1.sdk/System/Library/Frameworks/UIKit.framework/Headers/UIBezierPath.h:10:
+    /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.1.sdk/System/Library/Frameworks/CoreGraphics.framework/Headers/CGColorSpace.h:493:38: note: 'CGColorSpaceCreateWithICCProfile' has been explicitly marked deprecated here
+      493 | CG_EXTERN CGColorSpaceRef __nullable CGColorSpaceCreateWithICCProfile(CFDataRef cg_nullable data)
+          |                                      ^
+    1 warning generated.
+    lib/ui/screens/profile_screen.dart:380:69: Error: Not a constant expression.
+                                MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+                                                                        ^^^^^^^^^^^^^^^^^
+    Target kernel_snapshot_program failed: Exception
+    Failed to package /Users/alexdamore/Desktop/Vibe Code/Antigravity/Antigravity - Dec 28 2025 - Nertz/nertz_royale.
+    Command PhaseScriptExecution failed with a nonzero exit code
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/path_provider_foundation/path_provider_foundation_privacy.bundle'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/url_launcher_ios/url_launcher_ios_privacy.bundle'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/shared_preferences_foundation/shared_preferences_foundation_privacy.bundle'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/image_picker_ios/image_picker_ios_privacy.bundle'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/url_launcher_ios/url_launcher_ios.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/app_links/app_links_ios_privacy.bundle'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/SDWebImage/SDWebImage.bundle'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/path_provider_foundation/path_provider_foundation.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Intermediates.noindex/Runner.build/Debug-iphoneos/Runner.build/DerivedSources/Entitlements.plist'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Intermediates.noindex/Runner.build/Debug-iphoneos/Runner.build/Runner.app.xcent'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Intermediates.noindex/Runner.build/Debug-iphoneos/Runner.build/Runner.app.xcent.der'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/audioplayers_darwin/audioplayers_darwin.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/Runner.app'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/libwebp/libwebp.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/image_picker_ios/image_picker_ios.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/Pods_Runner.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/SDWebImageWebPCoder/SDWebImageWebPCoder.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/shared_preferences_foundation/shared_preferences_foundation.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/flutter_image_compress_common/flutter_image_compress_common.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/app_links/app_links.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/Mantle/Mantle.framework'
+
+    note: Removed stale file '/Users/alexdamore/Library/Developer/Xcode/DerivedData/Runner-ancxdaavjgkjjudnwtbtuvpxudvi/Build/Products/Debug-iphoneos/SDWebImage/SDWebImage.framework'
+
+    note: Run script build phase 'Thin Binary' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Runner' from project 'Runner')
+    note: Run script build phase 'Run Script' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Runner' from project 'Runner')
+
+Encountered error while building for device.

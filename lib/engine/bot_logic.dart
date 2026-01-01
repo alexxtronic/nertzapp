@@ -1,6 +1,4 @@
 import '../models/game_state.dart';
-import '../models/player_state.dart';
-import '../models/card.dart';
 import 'move_validator.dart';
 
 /// Simple AI for bot players

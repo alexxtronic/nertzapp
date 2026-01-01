@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -13,6 +14,7 @@ import '../../models/player_state.dart';
 import '../../models/pile.dart';
 import '../../engine/move_validator.dart';
 import '../theme/game_theme.dart';
+import 'reset_vote_dialog.dart';
 import 'package:confetti/confetti.dart';
 import '../../services/audio_service.dart';
 import '../../utils/player_colors.dart';
@@ -35,9 +37,11 @@ class GlassCard extends StatelessWidget {
     this.onDoubleTap,
     this.scale = 1.0,
     this.isCenterPile = false,
+    this.compact = false,
   });
 
   final bool isCenterPile;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +108,7 @@ class GlassCard extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(6),
+      padding: EdgeInsets.all(compact ? 4 : 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -112,7 +116,7 @@ class GlassCard extends StatelessWidget {
             card.rank.symbol,
             style: TextStyle(
               color: color,
-              fontSize: 14,
+              fontSize: compact ? 12 : 14,
               fontWeight: FontWeight.bold,
               fontFamily: 'SF Pro Rounded',
               height: 1.0,
@@ -122,7 +126,7 @@ class GlassCard extends StatelessWidget {
             card.suit.symbol,
             style: TextStyle(
               color: color,
-              fontSize: 12,
+              fontSize: compact ? 10 : 12,
               height: 1.0,
             ),
           ),
@@ -138,7 +142,7 @@ class GlassCard extends StatelessWidget {
                     card.rank.symbol,
                     style: TextStyle(
                       color: color,
-                      fontSize: 14,
+                      fontSize: compact ? 12 : 14,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'SF Pro Rounded',
                       height: 1.0,
@@ -148,7 +152,7 @@ class GlassCard extends StatelessWidget {
                     card.suit.symbol,
                     style: TextStyle(
                       color: color,
-                      fontSize: 12,
+                      fontSize: compact ? 10 : 12,
                       height: 1.0,
                     ),
                   ),
@@ -232,9 +236,10 @@ class GameBoard extends StatefulWidget {
   final String selectedCardBack; // Card back asset path
   final Function(Move)? onMove;
   final Function(PlayingCard)? onCardDoubleTap;
-  final VoidCallback? onCenterPilePlaced;
+  final Function(PlayingCard)? onCenterPilePlaced;
   final VoidCallback? onLeaveMatch;
   final VoidCallback? onVoteReset;
+  final VoidCallback? onShuffleDeck;
   
   const GameBoard({
     super.key,
@@ -247,6 +252,7 @@ class GameBoard extends StatefulWidget {
     this.onCenterPilePlaced,
     this.onLeaveMatch,
     this.onVoteReset,
+    this.onShuffleDeck,
   });
 
   @override
@@ -261,6 +267,9 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   List<Timer> _cardRevealTimers = [];
   // Track the number of cards to animate (set before draw, used during animation)
   int _cardsToAnimate = 0;
+  
+  // Track if vote dialog is showing (to prevent duplicates)
+  bool _isVoteDialogShowing = false;
   
   // Countdown State
   int _countdownValue = 0;
@@ -277,7 +286,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
   GameState get gameState => widget.gameState;
   String get currentPlayerId => widget.currentPlayerId;
   Function(Move)? get onMove => widget.onMove;
-  VoidCallback? get onCenterPilePlaced => widget.onCenterPilePlaced;
+  Function(PlayingCard)? get onCenterPilePlaced => widget.onCenterPilePlaced;
 
   PlayerState? get currentPlayer => gameState.getPlayer(currentPlayerId);
   
@@ -330,8 +339,72 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         Future.delayed(const Duration(seconds: 2), () {
            if (mounted) setState(() {});
         });
+        
+        // Dismiss vote dialog if showing
+        if (_isVoteDialogShowing && mounted) {
+          Navigator.of(context).pop();
+          _isVoteDialogShowing = false;
+        }
       }
     }
+    
+    // Detect remote vote initiation and show dialog
+    final newInitiator = widget.gameState.resetVoteInitiatorId;
+    final wasEmpty = oldWidget.gameState.resetVotes.isEmpty;
+    final isNotEmpty = widget.gameState.resetVotes.isNotEmpty;
+    
+    // Show dialog if:
+    // 1. Vote just started (votes was empty, now not empty)
+    // 2. Initiator is NOT current player (remote vote)
+    // 3. Dialog not already showing
+    // 4. Current player hasn't voted yet
+    if (wasEmpty && isNotEmpty && 
+        newInitiator != null && 
+        newInitiator != currentPlayerId &&
+        !_isVoteDialogShowing &&
+        !widget.gameState.resetVotes.contains(currentPlayerId)) {
+      
+      // Show the vote dialog
+      _showVoteDialog(newInitiator);
+    }
+    
+    // Dismiss dialog if votes were cleared
+    if (!wasEmpty && widget.gameState.resetVotes.isEmpty && _isVoteDialogShowing) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        _isVoteDialogShowing = false;
+      }
+    }
+    
+    // Play ding sound when Nertz pile becomes empty
+    final oldNertzEmpty = oldWidget.gameState.getPlayer(currentPlayerId)?.nertzPile.isEmpty ?? false;
+    final newNertzEmpty = widget.gameState.getPlayer(currentPlayerId)?.nertzPile.isEmpty ?? false;
+    
+    if (!oldNertzEmpty && newNertzEmpty) {
+      AudioService().playDing();
+    }
+  }
+  
+  void _showVoteDialog(String initiatorId) {
+    final initiator = gameState.players[initiatorId];
+    if (initiator == null) return;
+    
+    _isVoteDialogShowing = true;
+    
+    showResetVoteDialog(
+      context,
+      initiatorName: initiator.displayName,
+      hasVoted: gameState.resetVotes.contains(currentPlayerId),
+      onAgree: () {
+        _isVoteDialogShowing = false;
+        widget.onVoteReset?.call();
+      },
+      onDecline: () {
+        _isVoteDialogShowing = false;
+        // Decline just closes dialog - user chooses not to vote
+        // They can vote later via the Stuck button if they change their mind
+      },
+    );
   }
   
   void _startCountdown() {
@@ -503,55 +576,51 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       return const Center(child: Text('Loading...'));
     }
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: GameTheme.backgroundGradient,
-      ),
-      child: SafeArea(
-        child: Stack( // Changed to Stack for overlay
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                // Use CustomScrollView with SliverFillRemaining to allow Spacer() to work
-                // while still being scrollable on small screens.
-                return CustomScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  slivers: [
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center, // Center vertical content
-                        children: [
-                          _buildHeader(player),
-                          const Spacer(flex: 5), // MASSIVE SPACE AT TOP TO COMPRESS MIDDLE
-                          _buildOpponentsRow(),
-                          const SizedBox(height: 8), // Tighter to Center
-                          _buildCenterArea(),
-                          const SizedBox(height: 16), // Tighter GAP (Work moves UP)
-                          _buildWorkPiles(context, player),
-                          const Spacer(flex: 12), // EVEN MORE SPACE AT BOTTOM (Pushes play area WAY UP)
-                          _buildPlayerHand(player),
-                          const SizedBox(height: 32), // Keep Stock/Nertz at bottom
-                        ],
-                      ),
+    // Container removed as background is now handled by GameScreen
+    return SafeArea(
+      child: Stack( // Changed to Stack for overlay
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Use CustomScrollView with SliverFillRemaining to allow Spacer() to work
+              // while still being scrollable on small screens.
+              return CustomScrollView(
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center, // Center vertical content
+                      children: [
+                        _buildHeader(player),
+                        const Spacer(flex: 3), // TOP SPACE (tighter)
+                        _buildOpponentsRow(),
+                        const SizedBox(height: 8), // Spacing after bots (moved down)
+                        _buildCenterArea(),
+                        const SizedBox(height: 4), // Tighter gap to work piles (moved up)
+                        _buildWorkPiles(context, player),
+                        const Spacer(flex: 14), // Push player hand down more
+                        _buildPlayerHand(player),
+                        const SizedBox(height: 64), 
+                      ],
                     ),
-                  ],
-                );
-              },
+                  ),
+                ],
+              );
+            },
+          ),
+          if (_showCountdown) _buildCountdownOverlay(),
+          Align(
+            alignment: Alignment.center,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              colors: const [Colors.red, Colors.blue, Colors.green, Colors.yellow, Colors.purple],
+              createParticlePath: drawStar, 
             ),
-            if (_showCountdown) _buildCountdownOverlay(),
-            Align(
-              alignment: Alignment.center,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirectionality: BlastDirectionality.explosive,
-                shouldLoop: false,
-                colors: const [Colors.red, Colors.blue, Colors.green, Colors.yellow, Colors.purple],
-                createParticlePath: drawStar, 
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -565,7 +634,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     if (!isRecentReset && gameState.resetVotes.isEmpty) return const SizedBox.shrink();
     
     return Container(
-      margin: const EdgeInsets.only(top: 8),
+      // Margin removed to facilitate absolute positioning below nertz pile without shifting layout
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: isRecentReset 
@@ -661,33 +730,15 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Left: Title
+          // Left: Shuffle Deck Button (replaces NERTZ ROYALE text)
           Align(
             alignment: Alignment.centerLeft,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'NERTZ',
-                  style: TextStyle(
-                    color: GameTheme.textPrimary.withValues(alpha: 0.4),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const Text(
-                  'ROYALE',
-                  style: TextStyle(
-                    color: GameTheme.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
-            ),
+            child: gameState.phase == GamePhase.playing
+              ? Padding(
+                  padding: const EdgeInsets.only(left: 40), // Move closer to center
+                  child: _buildShuffleDeckButton(player),
+                )
+              : const SizedBox.shrink(),
           ),
           
           // Center: Points Pill
@@ -712,14 +763,41 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        const Icon(Icons.add, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        // Round Points
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${gameState.getPlayer(currentPlayerId)?.calculateRoundScore(gameState.countScorableCenterCards(currentPlayerId)) ?? 0} pts',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Separator
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Container(
+                            width: 1.5,
+                            height: 14,
+                            color: Colors.white.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        // Overall Points with Trophy
                         const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 16),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         Text(
-                          '${gameState.countPlayerCardsInCenter(currentPlayerId)} pts',
+                          '${player.scoreTotal}',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
                           ),
                         ),
                       ],
@@ -750,20 +828,33 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
               ),
             ),
           
-          // Right: Settings
+          // Right: Controls
           Align(
             alignment: Alignment.centerRight,
-            child: Container(
-              decoration: BoxDecoration(
-                color: GameTheme.background.withValues(alpha: 0.5),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 24),
-                onPressed: () {
-                  showSettingsDialog(context, onLeaveMatch: widget.onLeaveMatch);
-                },
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Stuck Button
+                if (gameState.phase == GamePhase.playing)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _buildStuckButton(),
+                  ),
+                
+                // Settings
+                Container(
+                  decoration: BoxDecoration(
+                    color: GameTheme.background.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.settings, color: GameTheme.textSecondary, size: 24),
+                    onPressed: () {
+                      showSettingsDialog(context, onLeaveMatch: widget.onLeaveMatch);
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -777,56 +868,16 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     const double miniCardWidth = GameTheme.cardWidth * 0.75;
     const double miniCardHeight = GameTheme.cardHeight * 0.75;
     
-    // Circular layout for 16 cards
-    // Positions arranged in concentric arcs
     return Column(
       children: [
-        // Shift down by card height
-        // SizedBox(height: GameTheme.cardHeight * 0.3),
-        const SizedBox(height: 4),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            children: [
-              Text(
-                'CENTER PILES',
-                style: TextStyle(
-                  color: GameTheme.textSecondary.withValues(alpha: 0.8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${gameState.centerPiles.where((p) => !p.isEmpty).length}/18',
-                style: TextStyle(
-                  color: GameTheme.textSecondary.withValues(alpha: 0.6),
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
         // Simple 3x6 grid layout (3 rows of 6 cards)
         for (int row = 0; row < 3; row++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(), // Just to allow overflow if needed without error
-              child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(6, (col) {
-                final index = row * 6 + col;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 1),
-                  child: _buildCenterPileSlot(index, miniCardWidth, miniCardHeight),
-                );
-              }),
-            ),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(6, (col) {
+              final index = row * 6 + col;
+              return _buildCenterPileSlot(index, miniCardWidth, miniCardHeight);
+            }),
           ),
       ],
     );
@@ -893,6 +944,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
     
     return DragTarget<PlayingCard>(
+      hitTestBehavior: HitTestBehavior.opaque,
       onWillAcceptWithDetails: (details) {
         return pile.canAdd(details.data);
       },
@@ -905,49 +957,49 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
           cardId: details.data.id,
           targetPileIndex: index,
         ));
-        onCenterPilePlaced?.call(); // Trigger +1 animation
+        onCenterPilePlaced?.call(details.data); // Trigger +1 animation
       },
       builder: (context, candidateData, rejectedData) {
         final isHighlighted = candidateData.isNotEmpty;
-        return Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            color: isHighlighted 
-              ? GameTheme.success.withValues(alpha: 0.3)
-              : Colors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Colors.black.withValues(alpha: 0.15),
-              width: 1.5,
-            ),
-            // Add color glow if recently placed
-            boxShadow: showGlow && glowColor != null ? [
-              BoxShadow(
-                color: glowColor.withValues(alpha: 0.8),
-                blurRadius: 12,
-                spreadRadius: 3,
-              ),
-              BoxShadow(
-                color: glowColor.withValues(alpha: 0.4),
-                blurRadius: 20,
-                spreadRadius: 6,
-              ),
-            ] : null,
-          ),
-
-          child: pile.isEmpty
-            ? Center(
-                child: Text(
-                  'A',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+        // Use SizedBox for invisible hit zone expansion (doesn't affect visual layout)
+        return SizedBox(
+          width: width + 10, // Compact hit area padding
+          height: height + 10,
+          child: Center(
+            child: Container(
+              width: width,
+              height: height,
+              decoration: BoxDecoration(
+                color: isHighlighted 
+                  ? GameTheme.success.withValues(alpha: 0.3)
+                  : Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isHighlighted ? GameTheme.success : Colors.black.withValues(alpha: 0.15),
+                  width: 1.5,
                 ),
-              )
-            : _buildMiniCard(pile.cards.last, width, height),
+                boxShadow: showGlow && glowColor != null ? [
+                  BoxShadow(
+                    color: glowColor.withValues(alpha: 0.8),
+                    blurRadius: 12,
+                    spreadRadius: 3,
+                  ),
+                ] : null,
+              ),
+              child: pile.isEmpty
+                ? Center(
+                    child: Text(
+                      'A',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                : _buildMiniCard(pile.cards.last, width, height),
+            ),
+          ),
         );
       },
     );
@@ -955,85 +1007,116 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
 
   Widget _buildPlayerHand(PlayerState player) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.only(left: 60, right: 16), // 60px left padding for Nertz pile alignment (moved right)
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start, // Align tops (prevent shifting when bottom expands)
+        crossAxisAlignment: CrossAxisAlignment.end, // Align bottoms (Nertz aligns with Stock)
         children: [
           // Nertz Pile + Stuck Button Group
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // Wrap in Stack with Overflow.visible so reset status doesn't push layout up
+          Stack(
+            clipBehavior: Clip.none,
             children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end, // Helper button at bottom aligned with Nertz label? Or center?
-                // Let's use End to align with Nertz label
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                    Column(
                      children: [
-                        player.nertzPile.isEmpty
-                          ? GestureDetector(
-                              onTap: () {
-                                HapticFeedback.heavyImpact(); // Strong haptics
-                                AudioService().playExplosion();
-                                AudioService().playApplause();
-                                _confettiController.play();
-                                
-                                onMove?.call(Move(
-                                  type: MoveType.callNertz, 
-                                  playerId: currentPlayerId
-                                ));
-                              },
-                              child: Container(
-                                width: GameTheme.cardWidth,
-                                height: GameTheme.cardHeight,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: GameTheme.primary.withValues(alpha: 0.5),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    )
-                                  ]
-                                ),
-                                child: Image.asset('assets/nertz_button.png'),
-                              ),
-                            )
-                          : Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(GameTheme.cardRadius),
-                                    // Add player color glow
-                                    boxShadow: [
-                                      if (player.playerColor != null)
-                                        BoxShadow(
-                                          color: (PlayerColors.intToColor(player.playerColor) ?? Colors.grey).withValues(alpha: 0.5),
-                                          blurRadius: 16,
-                                          spreadRadius: 4,
+                         player.nertzPile.isEmpty
+                           ? Column(
+                               mainAxisSize: MainAxisSize.min,
+                               children: [
+                                 // Prompt above button (Text + Arrow Down)
+                                 Container(
+                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                   decoration: BoxDecoration(
+                                     color: Colors.white,
+                                     borderRadius: BorderRadius.circular(16),
+                                     boxShadow: GameTheme.softShadow,
+                                     border: Border.all(color: GameTheme.error, width: 2),
+                                   ),
+                                   child: const Text(
+                                     "Press Nertz!",
+                                     style: TextStyle(
+                                       color: GameTheme.error,
+                                       fontWeight: FontWeight.bold,
+                                       fontSize: 12,
+                                     ),
+                                   ),
+                                 ),
+                                 const SizedBox(height: 4),
+                                 const Icon(Icons.arrow_downward, color: GameTheme.error, size: 24),
+                                 const SizedBox(height: 4),
+                                 
+                                 GestureDetector(
+                                   onTap: () {
+                                     HapticFeedback.heavyImpact(); // Strong haptics
+                                     AudioService().playExplosion();
+                                     AudioService().playApplause();
+                                     _confettiController.play();
+                                     
+                                     onMove?.call(Move(
+                                       type: MoveType.callNertz, 
+                                       playerId: currentPlayerId
+                                     ));
+                                   },
+                                   child: Container(
+                                     width: GameTheme.cardWidth,
+                                     height: GameTheme.cardHeight,
+                                     decoration: BoxDecoration(
+                                       shape: BoxShape.circle,
+                                       boxShadow: [
+                                         BoxShadow(
+                                           color: GameTheme.primary.withValues(alpha: 0.5),
+                                           blurRadius: 12,
+                                           offset: const Offset(0, 4),
+                                         )
+                                       ]
+                                     ),
+                                     child: Image.asset('assets/nertz_button.png'),
+                                   ),
+                                 ),
+                               ],
+                             )
+                          : Transform.translate(
+                              offset: const Offset(0, -15), // Move up to align with discard pile bottom
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+                                      // Add player color glow - increased for larger card
+                                      boxShadow: [
+                                        if (player.playerColor != null)
+                                          BoxShadow(
+                                            color: (PlayerColors.intToColor(player.playerColor) ?? Colors.grey).withValues(alpha: 0.6),
+                                            blurRadius: 36, // Significantly larger glow
+                                            spreadRadius: 12,
+                                          ),
+                                        ...GameTheme.softShadow,
+                                      ],
+                                    ),
+                                    child: Draggable<PlayingCard>(
+                                      data: player.nertzPile.cards.last,
+                                      feedback: Material(
+                                        color: Colors.transparent,
+                                        child: Transform.scale(
+                                          scale: 1.1,
+                                          child: GlassCard(card: player.nertzPile.cards.last),
                                         ),
-                                      ...GameTheme.softShadow,
-                                    ],
-                                  ),
-                                  child: Draggable<PlayingCard>(
-                                    data: player.nertzPile.cards.last,
-                                    feedback: Material(
-                                      color: Colors.transparent,
+                                      ),
+                                      childWhenDragging: Opacity(
+                                        opacity: 0.3,
+                                        child: GlassCard(card: player.nertzPile.cards.last), // Normal size when dragging
+                                      ),
                                       child: Transform.scale(
-                                        scale: 1.1,
+                                        scale: 1.25, // 25% larger Nertz pile
                                         child: GlassCard(card: player.nertzPile.cards.last),
                                       ),
                                     ),
-                                    childWhenDragging: Opacity(
-                                      opacity: 0.3,
-                                      child: GlassCard(card: player.nertzPile.cards.last),
-                                    ),
-                                    child: GlassCard(card: player.nertzPile.cards.last),
                                   ),
-                                ),
                                 Positioned(
                                   bottom: -10,
                                   right: -10,
@@ -1058,7 +1141,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                                     ),
                                   ),
                                 ),
-                              ],
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 8),
                             const Text("NERTZ", style: TextStyle(
@@ -1067,148 +1151,145 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                      ],
                    ),
                    
-                   // Stuck Button (To the RIGHT of Nertz Pile)
-                   if (gameState.phase == GamePhase.playing) ...[
-                      const SizedBox(width: 8), // Spacing
-                      _buildStuckButton(),
-                   ],
+                   // Stuck Button moved to header
                 ],
               ),
               
-              // Reset Status area (below the functional area)
-              _buildResetStatus(),
+              // Absolute positioned reset status (does not push columns up)
+              Positioned(
+                top: GameTheme.cardHeight + 25, // Placed below the NERTZ label
+                left: 0,
+                child: _buildResetStatus(),
+              ),
             ],
           ),
           
           // Waste + Stock (Right side: Waste left of Stock)
-          Row(
-            children: [
-              // Waste (left of Stock) - shows up to 3 cards fanned with animation
-              Column(
-                children: [
-                  _buildAnimatedWastePile(player),
-                ],
-              ),
-                  const SizedBox(width: 12),
-              // Stock (Far Right)
-                Column(
-                children: [
-                  GestureDetector(
-                    // Tap handles both Drawing (if cards exist) and Resetting (if empty & can reset)
-                    onTap: () {
-                      if (!player.stockPile.isEmpty) {
-                        _drawFromStock();
-                      } else if (!player.wastePile.isEmpty) {
-                        _resetStock();
-                      }
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: player.stockPile.isEmpty
-                      ? (player.wastePile.isEmpty 
-                          // Completely Empty: Ghost Slot
-                          ? const GhostSlot(label: "")
-                          // Empty Stock but Waste has cards: RESET CARD
-                          : Container(
-                              width: GameTheme.cardWidth * 1.1,
-                              height: GameTheme.cardHeight * 1.1,
-                              decoration: BoxDecoration(
-                                color: GameTheme.primary,
-                                borderRadius: BorderRadius.circular(GameTheme.cardRadius),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: GameTheme.primary.withValues(alpha: 0.4),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  )
-                                ],
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  "RESET",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                              ),
-                            ))
-                      // Normal Stock Pile functionality
-                      : Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: GameTheme.cardWidth * 1.25,
-                              height: GameTheme.cardHeight * 1.25,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(GameTheme.cardRadius),
-                                boxShadow: GameTheme.softShadow,
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(GameTheme.cardRadius),
-                                child: Image.asset(
-                                  widget.selectedCardBack,
-                                  width: GameTheme.cardWidth * 1.25,
-                                  height: GameTheme.cardHeight * 1.25,
-                                  fit: BoxFit.fill,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
+          Transform.translate(
+            offset: const Offset(30, -8), // Move right another 25px (was 5, now 30)
+            child: Row(
+              children: [
+                // Waste (left of Stock) - shows up to 3 cards fanned with animation
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 25), // Push waste pile up ~20%
+                  child: Transform.scale(
+                    scale: 1.10, // 10% larger (reduced from 25%)
+                    child: _buildAnimatedWastePile(player),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Stock (Far Right) with extended hitbox
+                GestureDetector(
+                  // Tap anywhere in the stock area activates it
+                  onTap: () {
+                    if (!player.stockPile.isEmpty) {
+                      _drawFromStock();
+                    } else if (!player.wastePile.isEmpty) {
+                      _resetStock();
+                    }
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    // Add 50px padding to the right for extended hitbox
+                    padding: const EdgeInsets.only(right: 50),
+                    child: Column(
+                      children: [
+                        // Stabilize height to 1.30 scale
+                        SizedBox(
+                          width: GameTheme.cardWidth * 1.30,
+                          height: GameTheme.cardHeight * 1.30,
+                          child: Center(
+                            child: player.stockPile.isEmpty
+                              ? (player.wastePile.isEmpty 
+                                  // Completely Empty: Ghost Slot
+                                  ? const GhostSlot(label: "")
+                                  // Empty Stock but Waste has cards: RESET CARD
+                                  : Container(
+                                      width: GameTheme.cardWidth * 1.30,
+                                      height: GameTheme.cardHeight * 1.30,
                                       decoration: BoxDecoration(
-                                        gradient: GameTheme.primaryGradient,
+                                        color: GameTheme.primary,
                                         borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: GameTheme.primary.withValues(alpha: 0.4),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          )
+                                        ],
+                                        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
                                       ),
                                       child: const Center(
                                         child: Text(
-                                          'N',
+                                          "RESET",
                                           style: TextStyle(
                                             color: Colors.white,
-                                            fontSize: 24,
                                             fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            letterSpacing: 1.0,
                                           ),
                                         ),
                                       ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                            // Card count badge
-                            Positioned(
-                              bottom: -6,
-                              right: -6,
-                              child: Container(
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: GameTheme.primary,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${player.stockPile.length}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
+                                    ))
+                              // Normal Stock Pile functionality
+                              : Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      width: GameTheme.cardWidth * 1.30,
+                                      height: GameTheme.cardHeight * 1.30,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+                                        boxShadow: GameTheme.softShadow,
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+                                        child: _buildCardBackImage(
+                                          widget.selectedCardBack,
+                                          GameTheme.cardWidth * 1.30,
+                                          GameTheme.cardHeight * 1.30,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    // Card count badge
+                                    Positioned(
+                                      bottom: -6,
+                                      right: -6,
+                                      child: Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          color: GameTheme.primary,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white, width: 2),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '${player.stockPile.length}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
+                        
+                        const SizedBox(height: 8),
+                        const Text("STOCK", style: TextStyle(
+                          color: GameTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold
+                        )),
+                      ],
+                    ),
                   ),
-                  
-                  const SizedBox(height: 8),
-                  const Text("STOCK", style: TextStyle(
-                    color: GameTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold
-                  )),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1221,9 +1302,11 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.start, // Align to top to prevent empty slots from drifting
         children: List.generate(4, (pileIndex) {
           final pile = player.workPiles[pileIndex];
           return DragTarget<PlayingCard>(
+            hitTestBehavior: HitTestBehavior.opaque,
             onWillAcceptWithDetails: (details) {
               return pile.canAdd(details.data);
             },
@@ -1251,19 +1334,24 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
             builder: (context, candidateData, rejectedData) {
               final isHighlighted = candidateData.isNotEmpty;
               return Container(
-                width: GameTheme.cardWidth,
-                // Ensure the DragTarget is at least cardHeight + some room
-                constraints: const BoxConstraints(minHeight: GameTheme.cardHeight),
-                decoration: BoxDecoration(
-                  color: isHighlighted 
-                      ? GameTheme.success.withValues(alpha: 0.2) 
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(GameTheme.cardRadius),
-                  border: isHighlighted 
-                      ? Border.all(color: GameTheme.success, width: 2) 
-                      : null,
+                // FORGIVING SNAP: Padding for larger hit zone around top card
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+                color: Colors.transparent,
+                child: Container(
+                  width: GameTheme.cardWidth,
+                  // Ensure the DragTarget is at least cardHeight + some room
+                  constraints: const BoxConstraints(minHeight: GameTheme.cardHeight),
+                  decoration: BoxDecoration(
+                    color: isHighlighted 
+                        ? GameTheme.success.withValues(alpha: 0.2) 
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+                    border: isHighlighted 
+                        ? Border.all(color: GameTheme.success, width: 2) 
+                        : null,
+                  ),
+                  child: _buildWorkPileItem(pile, pileIndex),
                 ),
-                child: _buildWorkPileItem(pile, pileIndex),
               );
             },
           );
@@ -1277,37 +1365,60 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       return const GhostSlot();
     }
     
-    // Condensed cascade view with Stack Dragging Support
-    // Increased offset to 24.0 for better touch target (12.0 was too small)
-    const double cascadeOffset = 24.0;
+    // FIXED LAYOUT: Height is constant regardless of pile size.
+    // This ensures the player hand area NEVER moves.
+    final int count = pile.length;
+    final bool isLarge = count > 5;
     
-    // Calculate total height to ensure SizedBox is large enough
-    double totalHeight = GameTheme.cardHeight + ((pile.length - 1) * cascadeOffset);
+    // FIXED height - never grows beyond this
+    const double maxPileHeight = GameTheme.cardHeight * 1.4;
+    
+    // Reserve minimum 15px peek for the FIRST card (top of pile visually)
+    const double firstCardPeek = 15.0;
+    
+    // Calculate offset for remaining cards after reserving first card peek
+    double baseOffset;
+    if (count <= 1) {
+      baseOffset = 20.0;
+    } else if (count == 2) {
+      baseOffset = firstCardPeek; // Just the peek space
+    } else {
+      // Distribute remaining height among cards 1 to N-1
+      // First card gets firstCardPeek, remaining cards share the rest
+      final remainingHeight = maxPileHeight - GameTheme.cardHeight - firstCardPeek;
+      baseOffset = (remainingHeight / (count - 2)).clamp(5.0, 20.0);
+    }
     
     return SizedBox(
       width: GameTheme.cardWidth,
-      height: totalHeight,
+      height: maxPileHeight,
       child: Stack(
         clipBehavior: Clip.none,
-        children: List.generate(pile.length, (index) {
+        children: List.generate(count, (index) {
           final card = pile.cards[index];
           
           bool isDraggable = true;
-          // Check if this card and all above it form a valid stack
-          for (int i = index; i < pile.length - 1; i++) {
+          for (int i = index; i < count - 1; i++) {
              final current = pile.cards[i];
              final next = pile.cards[i + 1];
-             // Next must be valid ON current
              if (!next.canPlaceOnWorkPile(current)) {
                  isDraggable = false;
                  break;
              }
           }
           
-          final childWidget = GlassCard(card: card);
+          final childWidget = GlassCard(
+            card: card, 
+            compact: isLarge, // Shrink icons if pile is large (6+)
+          );
+
+          // First card always at 0, subsequent cards offset
+          final double topPos = index == 0 
+              ? 0.0 
+              : firstCardPeek + (index - 1) * baseOffset;
 
           return Positioned(
-            top: index * cascadeOffset,
+            top: topPos,
             left: 0,
             child: isDraggable
               ? Draggable<PlayingCard>(
@@ -1316,14 +1427,15 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                     color: Colors.transparent,
                     child: SizedBox(
                       width: GameTheme.cardWidth,
-                      height: GameTheme.cardHeight + ((pile.length - index - 1) * cascadeOffset),
+                      height: GameTheme.cardHeight + ((count - index - 1) * baseOffset),
                       child: Stack(
                          clipBehavior: Clip.none,
-                         children: List.generate(pile.length - index, (subIndex) {
+                         children: List.generate(count - index, (subIndex) {
                              final subCard = pile.cards[index + subIndex];
+                             final double subTop = subIndex * baseOffset;
                              return Positioned(
-                               top: subIndex * cascadeOffset,
-                               child: GlassCard(card: subCard),
+                               top: subTop,
+                               child: GlassCard(card: subCard, compact: isLarge),
                              );
                          }),
                       ),
@@ -1498,20 +1610,120 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
       ],
     );
   }
+
+  Widget _buildShuffleDeckButton(PlayerState player) {
+    // Calculate time since last playable action
+    final lastAction = player.lastPlayableActionTime;
+    final now = DateTime.now();
+    // If no action yet (game just started), elapsed is 0 - button starts disabled
+    final elapsed = lastAction != null ? now.difference(lastAction).inSeconds : 0;
+    final progress = (elapsed / 60.0).clamp(0.0, 1.0); // 0.0 to 1.0 over 60 seconds
+    final isAvailable = lastAction != null && elapsed >= 60;
+    
+    // Check if there are cards to shuffle
+    final hasCards = !player.stockPile.isEmpty || !player.wastePile.isEmpty;
+    
+    return StreamBuilder(
+      stream: Stream.periodic(const Duration(seconds: 1)),
+      builder: (context, _) {
+        // Recalculate on each tick
+        final lastActionTime = player.lastPlayableActionTime;
+        final currentTime = DateTime.now();
+        // If no action yet, elapsed is 0 - button stays disabled until first action
+        final elapsedNow = lastActionTime != null ? currentTime.difference(lastActionTime).inSeconds : 0;
+        final progressNow = (elapsedNow / 60.0).clamp(0.0, 1.0);
+        final available = lastActionTime != null && elapsedNow >= 60 && hasCards;
+        
+        return GestureDetector(
+          onTap: available ? widget.onShuffleDeck : null,
+          child: Container(
+            width: 40,
+            height: 40,
+            child: Stack(
+              children: [
+                // Background circle with pie-chart progress
+                CustomPaint(
+                  size: const Size(40, 40),
+                  painter: _PieChartPainter(
+                    progress: progressNow,
+                    backgroundColor: Colors.grey.shade300,
+                    progressColor: available ? const Color(0xFFFF4444) : Colors.grey.shade500,
+                  ),
+                ),
+                // Inner content
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: available ? const Color(0xFFFF4444) : Colors.grey.shade400,
+                    shape: BoxShape.circle,
+                    boxShadow: available ? [
+                      BoxShadow(
+                        color: const Color(0xFFFF4444).withValues(alpha: 0.5),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ] : null,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Shuffle',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 6,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        Icon(
+                          Icons.shuffle,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Pie-chart overlay showing progress (ring around edge)
+                if (!available)
+                  CustomPaint(
+                    size: const Size(40, 40),
+                    painter: _PieProgressRingPainter(
+                      progress: progressNow,
+                      ringColor: Colors.grey.shade600,
+                      backgroundColor: Colors.transparent,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
   Widget _buildStuckButton() {
      final hasVoted = gameState.resetVotes.contains(currentPlayerId);
+     // Orange color for stuck button (to distinguish from red shuffle button)
+     const stuckColor = Color(0xFFFF9800); // Orange
      return GestureDetector(
        onTap: widget.onVoteReset, // Always allow tap to toggle
        child: Container(
-         width: 48,
-         height: 48,
-         margin: const EdgeInsets.only(left: 12, bottom: 20),
+         width: 40,
+         height: 40,
          decoration: BoxDecoration(
-           color: hasVoted ? Colors.grey : const Color(0xFFFF4444),
+           color: hasVoted ? Colors.grey : stuckColor,
            shape: BoxShape.circle,
            boxShadow: [
              BoxShadow(
-               color: (hasVoted ? Colors.grey : const Color(0xFFFF4444)).withValues(alpha: 0.4),
+               color: (hasVoted ? Colors.grey : stuckColor).withValues(alpha: 0.4),
                blurRadius: 8,
                offset: const Offset(0, 2),
              ),
@@ -1523,7 +1735,7 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
          ),
          child: Center(
            child: hasVoted 
-             ? const Icon(Icons.close, color: Colors.white, size: 24) // X to cancel
+             ? const Icon(Icons.close, color: Colors.white, size: 20) // X to cancel
              : const Column(
                  mainAxisAlignment: MainAxisAlignment.center,
                  children: [
@@ -1531,16 +1743,185 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
                      'Stuck',
                      style: TextStyle(
                        color: Colors.white,
-                       fontSize: 10,
+                       fontSize: 8,
                        fontWeight: FontWeight.w900,
                        letterSpacing: 0.5,
                      ),
                    ),
-                   Icon(Icons.refresh, color: Colors.white, size: 14),
+                   Icon(Icons.check, color: Colors.white, size: 14),
                  ],
                ),
          ),
        ),
      );
+  }
+  
+  /// Builds a card back image that handles both cloud URLs and local assets
+  Widget _buildCardBackImage(String path, double width, double height) {
+    // If it's a URL (from Supabase Storage), use CachedNetworkImage
+    if (path.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: path,
+        width: width,
+        height: height,
+        fit: BoxFit.fill,
+        placeholder: (context, url) => Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            gradient: GameTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+          ),
+          child: const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            gradient: GameTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+          ),
+          child: const Center(
+            child: Text(
+              'N',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
+    // Otherwise, load from local assets
+    return Image.asset(
+      path,
+      width: width,
+      height: height,
+      fit: BoxFit.fill,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            gradient: GameTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(GameTheme.cardRadius),
+          ),
+          child: const Center(
+            child: Text(
+              'N',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Custom painter for pie-chart style progress indicator
+class _PieChartPainter extends CustomPainter {
+  final double progress;
+  final Color backgroundColor;
+  final Color progressColor;
+
+  _PieChartPainter({
+    required this.progress,
+    required this.backgroundColor,
+    required this.progressColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    
+    // Background circle
+    final bgPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, bgPaint);
+    
+    // Progress arc (pie slice)
+    if (progress > 0) {
+      final progressPaint = Paint()
+        ..color = progressColor
+        ..style = PaintingStyle.fill;
+      
+      final sweepAngle = 2 * 3.14159 * progress;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -3.14159 / 2, // Start from top
+        sweepAngle,
+        true, // Use center
+        progressPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PieChartPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+           oldDelegate.backgroundColor != backgroundColor ||
+           oldDelegate.progressColor != progressColor;
+  }
+}
+
+/// Custom painter for progress ring around button edge
+class _PieProgressRingPainter extends CustomPainter {
+  final double progress;
+  final Color ringColor;
+  final Color backgroundColor;
+
+  _PieProgressRingPainter({
+    required this.progress,
+    required this.ringColor,
+    required this.backgroundColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 2; // Slightly inside edge
+    final strokeWidth = 3.0;
+    
+    // Progress arc ring
+    if (progress > 0) {
+      final ringPaint = Paint()
+        ..color = ringColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+      
+      final sweepAngle = 2 * 3.14159 * progress;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -3.14159 / 2, // Start from top
+        sweepAngle,
+        false,
+        ringPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PieProgressRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+           oldDelegate.ringColor != ringColor;
   }
 }

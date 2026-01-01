@@ -18,87 +18,95 @@ class OpponentBoard extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Name on top, very small
+        // Name on top, slightly larger
         Text(
           player.displayName,
           style: TextStyle(
             color: GameTheme.textSecondary.withValues(alpha: 0.8),
-            fontSize: 9, 
+            fontSize: 11, 
             fontWeight: FontWeight.bold,
           ),
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         // Overlapping Stack
         SizedBox(
-          width: 75,  // Increased from 60
-          height: 70, // Increased from 55
+          width: 94,  
+          height: 88, 
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               // Nertz Pile (Card) - Shifted Right and Top
               Positioned(
-                right: 4,
+                right: 0,
                 top: 0,
                 child: Container(
-                  width: 44, // Increased from 35 (+~25%)
-                  height: 62, // Increased from 50 (+~24%)
+                  width: 55, 
+                  height: 78, 
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                     boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(1, 1)),
+                      BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(1, 1)),
                     ],
                     image: DecorationImage(
                       image: AssetImage(cardBackAsset),
                       fit: BoxFit.cover,
                     ),
                   ),
-                  child: Center(
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        color: GameTheme.primary, // Purple circle
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-                        ],
-                      ),
-                      child: Text(
-                        '${player.nertzPile.remaining}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                  child: Stack(
+                    children: [
+                      // Nertz remaining count circle in bottom right - inside the card
+                      Positioned(
+                        right: 2,
+                        bottom: 2,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: GameTheme.primary, // Purple circle
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4, offset: const Offset(0, 2)),
+                            ],
+                          ),
+                          child: Text(
+                            '${player.nertzPile.remaining}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
+
               // Avatar - Bottom Left, overlapping
               Positioned(
                 left: 0,
-                bottom: 0,
+                bottom: 0, 
                 child: Container(
-                   width: 38, // Increased from 32
-                   height: 38, // Increased from 32
+                   width: 52, 
+                   height: 52, 
                    decoration: BoxDecoration(
                      shape: BoxShape.circle,
                      border: Border.all(
                        color: player.playerColor != null 
                           ? Color(player.playerColor!) 
                           : Colors.white, 
-                       width: 2
+                       width: 3
                      ),
                      color: GameTheme.surface,
                      boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
                         )
                      ],
                    ),
@@ -116,16 +124,26 @@ class OpponentBoard extends StatelessWidget {
 
   Widget _buildAvatar(PlayerState player) {
     if (player.avatarUrl == null || player.avatarUrl!.isEmpty) {
-      return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)));
+      return Container(
+        color: GameTheme.surface,
+        alignment: Alignment.center,
+        child: Text(
+          player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', 
+          style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)
+        ),
+      );
     }
 
-    // Check if it's a local asset (bots often use assets)
-    if (player.avatarUrl!.startsWith('assets/') || !player.avatarUrl!.startsWith('http')) {
+    // Check if it's a local asset
+    final isLocal = player.avatarUrl!.startsWith('assets/') || !player.avatarUrl!.startsWith('http');
+    
+    if (isLocal) {
        return Image.asset(
          player.avatarUrl!,
          fit: BoxFit.cover,
          errorBuilder: (context, error, stackTrace) {
-            return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)));
+            debugPrint('❌ Error loading local avatar: ${player.avatarUrl}');
+            return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)));
          },
        );
     }
@@ -133,8 +151,20 @@ class OpponentBoard extends StatelessWidget {
     return Image.network(
       player.avatarUrl!,
       fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                : null,
+            strokeWidth: 2,
+          ),
+        );
+      },
       errorBuilder: (context, error, stackTrace) {
-         return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)));
+         debugPrint('❌ Error loading network avatar: ${player.avatarUrl}');
+         return Center(child: Text(player.displayName.isNotEmpty ? player.displayName[0].toUpperCase() : '?', style: const TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)));
       },
     );
   }

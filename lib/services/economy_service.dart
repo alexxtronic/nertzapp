@@ -137,15 +137,19 @@ class EconomyService {
   /// Get shop catalog
   Future<List<ShopProduct>> getShopProducts() async {
     try {
+
+
       final response = await _supabase
           .from('shop_products')
           .select()
           .eq('is_available', true)
           .order('sort_order');
 
-      return (response as List)
+      final products = (response as List)
           .map((json) => ShopProduct.fromJson(json))
           .toList();
+
+      return products;
     } catch (e) {
       print('❌ Error fetching shop products: $e');
       return [];
@@ -175,10 +179,10 @@ class EconomyService {
   }
 
   /// Calculate coins earned from a round score
-  /// Rule: 1 coin per 10 net positive points
+  /// Rule: 1 coin per 1 point (1:1 ratio)
   static int calculateCoinsEarned(int roundScore) {
     if (roundScore <= 0) return 0;
-    return roundScore ~/ 10;
+    return roundScore;
   }
 
   /// Get user's selected card back
@@ -244,4 +248,82 @@ class EconomyService {
         return 'assets/card_back.png';
     }
   }
+
+  /// Get user's currently selected music ID
+  Future<String?> getSelectedMusicId() async {
+    final userId = _currentUserId;
+    if (userId == null) return null;
+
+    try {
+      final response = await _supabase
+          .from('profiles')
+          .select('selected_music_id')
+          .eq('id', userId)
+          .single();
+      
+      return response['selected_music_id'] as String?;
+    } catch (e) {
+      print('❌ Error fetching selected music: $e');
+      return null;
+    }
+  }
+
+  /// Set user's selected music
+  Future<bool> setSelectedMusicId(String? itemId) async {
+    final userId = _currentUserId;
+    if (userId == null) return false;
+
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'selected_music_id': itemId})
+          .eq('id', userId);
+
+      print('🎵 Selected music: $itemId');
+      return true;
+    } catch (e) {
+      print('❌ Error setting music: $e');
+      return false;
+    }
+  }
+
+  /// Get user's currently selected background ID
+  Future<String?> getSelectedBackgroundId() async {
+    final userId = _currentUserId;
+    if (userId == null) return null;
+
+    try {
+      final response = await _supabase
+          .from('profiles')
+          .select('selected_background_id')
+          .eq('id', userId)
+          .single();
+      
+      return response['selected_background_id'] as String?;
+    } catch (e) {
+      print('❌ Error fetching selected background: $e');
+      return null;
+    }
+  }
+
+  /// Set user's selected background
+  Future<bool> setSelectedBackgroundId(String? itemId) async {
+    final userId = _currentUserId;
+    if (userId == null) return false;
+
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'selected_background_id': itemId})
+          .eq('id', userId);
+
+      print('🖼️ Selected background: $itemId');
+      return true;
+    } catch (e) {
+      print('❌ Error setting background: $e');
+      return false;
+    }
+  }
+
+
 }
