@@ -8,10 +8,14 @@ import '../theme/game_theme.dart';
 
 class CurrencyDisplay extends ConsumerWidget {
   final bool compact;
+  final bool large;
+  final bool lightMode;
   
   const CurrencyDisplay({
     super.key,
     this.compact = false,
+    this.large = false,
+    this.lightMode = false,
   });
 
   @override
@@ -30,6 +34,8 @@ class CurrencyDisplay extends ConsumerWidget {
               value: balance.coins,
               color: const Color(0xFFFFD700), // Gold
               compact: compact,
+              large: large,
+              lightMode: lightMode,
             ),
             const SizedBox(width: 8),
             _CurrencyChip(
@@ -37,6 +43,8 @@ class CurrencyDisplay extends ConsumerWidget {
               value: balance.gems,
               color: const Color(0xFF9B59B6), // Purple
               compact: compact,
+              large: large,
+              lightMode: lightMode,
             ),
           ],
         );
@@ -56,26 +64,39 @@ class _CurrencyChip extends StatelessWidget {
   final int value;
   final Color color;
   final bool compact;
+  final bool large;
+  final bool lightMode;
 
   const _CurrencyChip({
     required this.iconAsset,
     required this.value,
     required this.color,
     this.compact = false,
+    this.large = false,
+    this.lightMode = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final double iconSize = large ? 28 : (compact ? 18 : 24);
+    final double fontSize = large ? 18 : (compact ? 12 : 14);
+    final double hPadding = large ? 16 : (compact ? 8 : 12);
+    final double vPadding = large ? 10 : (compact ? 4 : 6);
+    
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 12,
-        vertical: compact ? 4 : 6,
+        horizontal: hPadding,
+        vertical: vPadding,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: lightMode 
+            ? Colors.white.withOpacity(0.2) 
+            : color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: color.withValues(alpha: 0.3),
+          color: lightMode 
+              ? Colors.white.withOpacity(0.4) 
+              : color.withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -84,15 +105,15 @@ class _CurrencyChip extends StatelessWidget {
         children: [
           Image.asset(
             iconAsset,
-            width: compact ? 18 : 24,
-            height: compact ? 18 : 24,
+            width: iconSize,
+            height: iconSize,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             _formatNumber(value),
             style: TextStyle(
-              color: GameTheme.textPrimary,
-              fontSize: compact ? 12 : 14,
+              color: lightMode ? Colors.white : GameTheme.textPrimary,
+              fontSize: fontSize,
               fontWeight: FontWeight.bold,
             ),
           ),

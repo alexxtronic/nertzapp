@@ -81,6 +81,7 @@ flutter:
     - assets/background_music/
     - assets/backgrounds/
     - assets/avatars/
+    - assets/splash_hero.png
 
 # App icon configuration
 flutter_launcher_icons:

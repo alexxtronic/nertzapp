@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
-import 'lobby_screen.dart';
+import 'main_navigation_screen.dart';
 
 /// Routes between Login and Lobby based on authentication state
 class AuthGate extends StatelessWidget {
@@ -24,7 +24,7 @@ class AuthGate extends StatelessWidget {
 
         // If we have a valid session, go to Lobby
         if (session != null) {
-          return const LobbyScreen();
+          return const MainNavigationScreen();
         }
 
         // Otherwise go to Login
