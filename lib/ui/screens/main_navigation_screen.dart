@@ -91,9 +91,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     final currentIndex = ref.watch(currentTabProvider);
     
     return Scaffold(
-      backgroundColor: GameTheme.surfaceLight,
-      body: SafeArea(
-        child: Column(
+      backgroundColor: Colors.white, // Explicit white to prevent black screen
+      resizeToAvoidBottomInset: false, // Prevent layout jumps
+      body: Material(
+        color: Colors.white, // Double insurance for opacity
+        child: SafeArea(
+          child: Column(
           children: [
             // Currency Header (tappable)
             _buildCurrencyHeader(),
@@ -121,6 +124,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
               ),
             ),
           ],
+        ),
         ),
       ),
       bottomNavigationBar: _buildBottomNavBar(currentIndex),

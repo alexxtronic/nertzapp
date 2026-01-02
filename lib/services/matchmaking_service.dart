@@ -121,7 +121,7 @@ class MatchmakingService {
   }
 
   /// Check status of queue/self
-  /// Returns {status: 'searching'|'matched', matchId: uuid, count: int}
+  /// Returns {status: 'searching'|'matched', matchId: uuid, avatars: List<String?>}
   Future<Map<String, dynamic>> checkQueueStatus() async {
     if (_currentUserId == null) return {};
     
@@ -133,32 +133,35 @@ class MatchmakingService {
           .eq('user_id', _currentUserId!)
           .maybeSingle();
           
-      if (myEntry == null) return {'status': 'none', 'count': 0};
+      if (myEntry == null) return {'status': 'none', 'avatars': <String?>[]};
       
       if (myEntry['status'] == 'matched') {
          return {
            'status': 'matched', 
            'matchId': myEntry['match_id'],
-           'count': 4 // Full lobby
+           'avatars': <String?>[], // Not needed when matched
          };
       }
       
-      // 2. Count "searching" players (including me)
-      // Note: This is a loose count for UI visualization
-      final countRes = await _supabase
+      // 2. Get searching players (up to 4)
+      final searchingEntries = await _supabase
           .from('matchmaking_queue')
-          .count(CountOption.exact)
-          .eq('status', 'searching');
-          
+          .select('avatar_url')
+          .eq('status', 'searching')
+          .order('created_at', ascending: true)
+          .limit(4);
+      
+      final avatars = (searchingEntries as List).map((e) => e['avatar_url'] as String?).toList();
+
       return {
         'status': 'searching',
         'matchId': null,
-        'count': countRes
+        'avatars': avatars
       };
       
     } catch (e) {
       debugPrint('Queue status check error: $e');
-      return {'status': 'error', 'count': 0};
+      return {'status': 'error', 'avatars': <String?>[]};
     }
   }
 

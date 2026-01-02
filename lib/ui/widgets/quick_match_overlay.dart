@@ -17,7 +17,7 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
   String _statusMessage = "Joining queue...";
   final _service = MatchmakingService();
   bool _foundMatch = false;
-  int _playersFound = 1; // Start with self
+  List<String?> _foundAvatars = []; // Replaces _playersFound count
 
   @override
   void initState() {
@@ -53,14 +53,14 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
            return;
         }
         
-        // Update waiting count
+        // Update avatars
         if (status['status'] == 'searching') {
           setState(() {
-            _playersFound = (status['count'] as int? ?? 1).clamp(1, 4);
+            _foundAvatars = List<String?>.from(status['avatars'] ?? []);
           });
           
           // Try to create match if we have enough players
-          if (_playersFound >= 4) {
+          if (_foundAvatars.length >= 4) {
              final matchId = await _service.tryCreateMatch();
              if (matchId != null) {
                _handleMatchFound(matchId);
@@ -82,7 +82,6 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
     
     setState(() {
       _statusMessage = "Match Starting!";
-      _playersFound = 4; // Fill UI
     });
     
     // Slight delay for effect
@@ -131,8 +130,9 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: List.generate(4, (index) {
-                  final isFilled = index < _playersFound;
-                  return _buildPlayerSlot(isFilled);
+                  final avatarUrl = index < _foundAvatars.length ? _foundAvatars[index] : null;
+                  final isFilled = index < _foundAvatars.length;
+                  return _buildPlayerSlot(isFilled, avatarUrl);
                 }),
               ),
               
@@ -156,12 +156,12 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
                     child: const Text("Leave Queue"),
                   ),
                   const SizedBox(width: 16),
-                  if (_playersFound >= 2)
+                  if (_foundAvatars.length >= 2)
                     ElevatedButton(
                       onPressed: () async {
-                         setState(() => _statusMessage = "Starting match with $_playersFound players...");
+                         setState(() => _statusMessage = "Starting match with ${_foundAvatars.length} players...");
                          // Try to create match with minimum required opponents (Total - Me)
-                         final matchId = await _service.tryCreateMatch(minOpponents: _playersFound - 1);
+                         final matchId = await _service.tryCreateMatch(minOpponents: _foundAvatars.length - 1);
                          if (matchId != null) {
                            _handleMatchFound(matchId);
                          } else {
@@ -183,7 +183,7 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
     );
   }
   
-  Widget _buildPlayerSlot(bool isFilled) {
+  Widget _buildPlayerSlot(bool isFilled, String? avatarUrl) {
     return Container(
       width: 50,
       height: 50,
@@ -197,7 +197,18 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
       ),
       child: Center(
         child: isFilled 
-          ? const Icon(Icons.person, color: Colors.white)
+          ? avatarUrl != null 
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    avatarUrl,
+                    fit: BoxFit.cover,
+                    width: 50,
+                    height: 50,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white),
+                  ),
+                )
+              : const Icon(Icons.person, color: Colors.white)
           : const CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
       ),
     );

@@ -200,7 +200,7 @@ class GameTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: primary,
-      scaffoldBackgroundColor: Colors.transparent, // Background handled by container
+      scaffoldBackgroundColor: surfaceLight, // Solid background to prevent black screen
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         secondary: secondary,

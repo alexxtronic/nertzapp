@@ -1,14 +1,35 @@
 -- Reset Ranked System & Fix Schema
 -- Run this in Supabase SQL Editor. It handles everything safely.
 
--- 1. Ensure columns exist (Fixing the "column does not exist" error)
+-- 1. Ensure columns exist on PROFILES
 ALTER TABLE public.profiles 
 ADD COLUMN IF NOT EXISTS ranked_points INT DEFAULT 0,
 ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'Bronze',
 ADD COLUMN IF NOT EXISTS wins INT DEFAULT 0,
 ADD COLUMN IF NOT EXISTS losses INT DEFAULT 0;
 
--- 2. Update default for NEW users to 0 (was 1000 previously)
+-- 2. Ensure columns exist on MATCHMAKING_QUEUE (Fixing PGRST204 error)
+CREATE TABLE IF NOT EXISTS public.matchmaking_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  username TEXT NOT NULL,
+  avatar_url TEXT,
+  ranked_points INT NOT NULL DEFAULT 0,
+  status TEXT DEFAULT 'searching',
+  match_id UUID,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id)
+);
+
+-- Safely add 'ranked_points' if table already existed but lacked column
+ALTER TABLE public.matchmaking_queue 
+ADD COLUMN IF NOT EXISTS ranked_points INT DEFAULT 0;
+
+-- Force Schema Cache Reload (for PostgREST)
+NOTIFY pgrst, 'reload schema';
+
+-- 3. Update default for NEW users to 0
 ALTER TABLE public.profiles 
 ALTER COLUMN ranked_points SET DEFAULT 0;
 
