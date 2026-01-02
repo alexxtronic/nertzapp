@@ -17,6 +17,7 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
   String _statusMessage = "Joining queue...";
   final _service = MatchmakingService();
   bool _foundMatch = false;
+  int _playersFound = 1; // Start with self
 
   @override
   void initState() {
@@ -39,19 +40,32 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
       await _service.joinQueue();
       if (!mounted) return;
 
-      setState(() => _statusMessage = "Searching for opponents...");
+      setState(() => _statusMessage = "Waiting for players...");
 
-      // 2. Poll for opponents every 3 seconds
-      _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-        final opponents = await _service.scanForOpponents();
+      // 2. Poll status every 2 seconds
+      _pollTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+        final status = await _service.checkQueueStatus();
         
         if (!mounted) return;
-
-        if (opponents.isNotEmpty) {
-           _handleMatchFound(opponents);
-        } else {
-           // Update UI to show we are still waiting
-           // In a real app we might show "Searching..." with animated dots
+        
+        if (status['status'] == 'matched') {
+           _handleMatchFound(status['matchId']);
+           return;
+        }
+        
+        // Update waiting count
+        if (status['status'] == 'searching') {
+          setState(() {
+            _playersFound = (status['count'] as int? ?? 1).clamp(1, 4);
+          });
+          
+          // Try to create match if we have enough players
+          if (_playersFound >= 4) {
+             final matchId = await _service.tryCreateMatch();
+             if (matchId != null) {
+               _handleMatchFound(matchId);
+             }
+          }
         }
       });
       
@@ -62,32 +76,29 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
     }
   }
 
-  Future<void> _handleMatchFound(List<String> opponents) async {
+  Future<void> _handleMatchFound(String matchId) async {
     _pollTimer?.cancel();
     _foundMatch = true;
     
-    setState(() => _statusMessage = "Opponents found! Creating match...");
+    setState(() {
+      _statusMessage = "Match Starting!";
+      _playersFound = 4; // Fill UI
+    });
+    
+    // Slight delay for effect
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (!mounted) return;
 
     try {
-      final lobbyCode = await _service.createRankedMatch(opponents);
-      
-      if (!mounted) return;
-      
       // Join the game
-      ref.read(gameStateProvider.notifier).joinGame(lobbyCode);
+      ref.read(gameStateProvider.notifier).joinGame(matchId);
       
-      // Navigate to game (close overlay then push)
-      Navigator.pop(context); // Close overlay
-      // Navigation is usually handled by parent or router listener, 
-      // but here we might need to trigger it manually if not listening to game state changes
-      // The parent BattleTab listens to game state or we can just push directly
-      
-      // For now, let's trigger the nav via callback or provider if possible.
-      // Assuming BattleTab handles navigation based on game state, or we can't easily push from here without context issues.
-      // We'll update the game state and let the UI react.
+      // Navigate to game
+      Navigator.pop(context); 
       
     } catch (e) {
-      setState(() => _statusMessage = "Failed to start match: $e");
+      setState(() => _statusMessage = "Failed to join: $e");
       _foundMatch = false;
     }
   }
@@ -98,7 +109,7 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
       color: Colors.black87,
       child: Center(
         child: Container(
-          width: 300,
+          width: 340,
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: GameTheme.surfaceLight,
@@ -109,31 +120,61 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(color: GameTheme.accent),
-              const SizedBox(height: 24),
               Text(
-                "RANKED MATCHMAKING",
+                "RANKED LOBBY",
                 style: GameTheme.h2.copyWith(fontSize: 20, color: GameTheme.accent),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
+              
+              // 4 Slots
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(4, (index) {
+                  final isFilled = index < _playersFound;
+                  return _buildPlayerSlot(isFilled);
+                }),
+              ),
+              
+              const SizedBox(height: 24),
               Text(
                 _statusMessage,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: GameTheme.textSecondary),
+                style: const TextStyle(color: GameTheme.textSecondary, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 32),
+              
               OutlinedButton(
                 onPressed: () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.red,
                   side: const BorderSide(color: Colors.red),
                 ),
-                child: const Text("Cancel"),
+                child: const Text("Leave Queue"),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+  
+  Widget _buildPlayerSlot(bool isFilled) {
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        color: isFilled ? GameTheme.primary : Colors.grey.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isFilled ? GameTheme.primary : Colors.grey.withOpacity(0.3),
+           width: 2
+        ),
+      ),
+      child: Center(
+        child: isFilled 
+          ? const Icon(Icons.person, color: Colors.white)
+          : const CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
       ),
     );
   }

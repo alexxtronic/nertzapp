@@ -120,10 +120,52 @@ class MatchmakingService {
     }
   }
 
-  /// Search for match (Client-side logic for now)
-  /// Returns List of opponent User IDs if match found, empty if still searching
-  Future<List<String>> scanForOpponents() async {
-    if (_currentUserId == null) return [];
+  /// Check status of queue/self
+  /// Returns {status: 'searching'|'matched', matchId: uuid, count: int}
+  Future<Map<String, dynamic>> checkQueueStatus() async {
+    if (_currentUserId == null) return {};
+    
+    try {
+      // 1. Check my status
+      final myEntry = await _supabase
+          .from('matchmaking_queue')
+          .select('status, match_id')
+          .eq('user_id', _currentUserId!)
+          .maybeSingle();
+          
+      if (myEntry == null) return {'status': 'none', 'count': 0};
+      
+      if (myEntry['status'] == 'matched') {
+         return {
+           'status': 'matched', 
+           'matchId': myEntry['match_id'],
+           'count': 4 // Full lobby
+         };
+      }
+      
+      // 2. Count "searching" players (including me)
+      // Note: This is a loose count for UI visualization
+      final countRes = await _supabase
+          .from('matchmaking_queue')
+          .count(CountOption.exact)
+          .eq('status', 'searching');
+          
+      return {
+        'status': 'searching',
+        'matchId': null,
+        'count': countRes
+      };
+      
+    } catch (e) {
+      debugPrint('Queue status check error: $e');
+      return {'status': 'error', 'count': 0};
+    }
+  }
+
+  /// Search for match (Client-side logic)
+  /// Returns matchId if match is CREATED by me, null otherwise
+  Future<String?> tryCreateMatch() async {
+    if (_currentUserId == null) return null;
 
     try {
       // Get my points
@@ -132,57 +174,44 @@ class MatchmakingService {
           .select('ranked_points')
           .eq('id', _currentUserId!)
           .single();
-      final myPoints = profile['ranked_points'] as int? ?? 1000;
+      final myPoints = profile['ranked_points'] as int? ?? 0;
 
-      // Find 1-3 opponents
+      // Find 3 opponents (total 4)
       final result = await _supabase.rpc('find_ranked_opponents', params: {
         'p_user_id': _currentUserId,
         'p_points': myPoints,
-        'p_limit': 3, // Try to find full game
+        'p_limit': 3, 
       });
 
       final opponents = result as List;
       
-      // If we found at least 1 opponent, we can start a match
-      // (For now, even 1v1 is fine to start quickly)
-      if (opponents.isNotEmpty) {
-        final opponentIds = opponents.map((o) => o['user_id'] as String).toList();
+      // NEED 3 opponents for a 4-player game
+      if (opponents.length >= 3) {
+        final opponentIds = opponents.take(3).map((o) => o['user_id'] as String).toList();
+        final matchId = _uuid.v4().substring(0, 6).toUpperCase();
         
-        // Remove everyone from queue (atomic-ish)
-        // In real server, this would be a transaction. 
-        // Here we just try our best to claim them.
+        // Atomic Create
+        final success = await _supabase.rpc('create_ranked_match', params: {
+          'p_matchmaker_id': _currentUserId,
+          'p_opponent_ids': opponentIds,
+          'p_match_id': matchId,
+        });
         
-        await _supabase.from('matchmaking_queue')
-            .update({'status': 'matched'})
-            .filter('user_id', 'in', opponentIds);
-            
-        return opponentIds;
+        if (success == true) {
+          debugPrint('✅ Created Match $matchId with 4 players');
+          return matchId;
+        } else {
+             debugPrint('⚠️ Failed to create match (Race condition)');
+        }
       }
       
-      return [];
+      return null;
     } catch (e) {
       debugPrint('Matchmaking scan error: $e');
-      return [];
+      return null;
     }
   }
 
-  /// Create a ranked lobby with found opponents
-  Future<String> createRankedMatch(List<String> opponentIds) async {
-    // create lobby
-    // invite/add players directly
-    // return lobby code
-    
-    // NOTE: This reuses SupabaseService.createLobby logic but marks it ranked
-    // For MVP, we use the regular lobby but track it as ranked in our heads/local state
-    // Ideally, Lobby table should have 'is_ranked' column.
-    
-    // For now we just return a new match ID and let the clients join via code/invite
-    // Since we don't have server-side forcing, we assume invited players join.
-    
-    // This part bridges to the existing GameStateNotifier logic
-    return _uuid.v4().substring(0, 6).toUpperCase(); 
-  }
-  
   /// Report game result to backend (updates ELO)
   Future<void> reportResult({required bool isWin, required int pointsChange}) async {
      if (_currentUserId == null) return;
