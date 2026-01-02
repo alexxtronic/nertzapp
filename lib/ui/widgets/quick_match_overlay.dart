@@ -1,29 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../services/supabase_service.dart';
+import '../../services/matchmaking_service.dart';
 import '../theme/game_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../state/game_provider.dart';
 
-/// Quick Match Overlay - Work in Progress
-/// 
-/// This feature is currently under development. When complete, it will:
-/// 1. Add user to a matchmaking queue
-/// 2. Wait for enough players
-/// 3. Create a match and navigate to the game
-/// 
-/// For now, this shows a placeholder UI.
-class QuickMatchOverlay extends StatefulWidget {
+class QuickMatchOverlay extends ConsumerStatefulWidget {
   const QuickMatchOverlay({super.key});
 
   @override
-  State<QuickMatchOverlay> createState() => _QuickMatchOverlayState();
+  ConsumerState<QuickMatchOverlay> createState() => _QuickMatchOverlayState();
 }
 
-class _QuickMatchOverlayState extends State<QuickMatchOverlay> {
-  StreamSubscription? _queueSub;
-  String? _joinedLobbyId;
+class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
+  Timer? _pollTimer;
   String _statusMessage = "Joining queue...";
-  final String _currentUserId = SupabaseService().currentUser?.id ?? '';
-  bool _isCreator = false;
+  final _service = MatchmakingService();
+  bool _foundMatch = false;
 
   @override
   void initState() {
@@ -33,121 +26,110 @@ class _QuickMatchOverlayState extends State<QuickMatchOverlay> {
 
   @override
   void dispose() {
-    _queueSub?.cancel();
-    if (_joinedLobbyId == null) {
-      SupabaseService().leaveQueue(); // Leave if closed without joining game
+    _pollTimer?.cancel();
+    if (!_foundMatch) {
+      _service.leaveQueue();
     }
     super.dispose();
   }
 
   Future<void> _startMatchmaking() async {
-    // 1. Join Queue
-    await SupabaseService().joinQueue();
-    if (!mounted) return;
-
-    setState(() => _statusMessage = "Searching for players...");
-
-    // 2. Listen to queue
-    _queueSub = SupabaseService().getQueueStream().listen((queue) {
+    try {
+      // 1. Join Queue
+      await _service.joinQueue();
       if (!mounted) return;
 
-      final myEntry = queue.firstWhere(
-        (e) => e['user_id'] == _currentUserId, 
-        orElse: () => {}, 
-      );
-      
-      // If we disappear from queue, maybe matched? Or removed?
-      if (myEntry.isEmpty) {
-        return;
-      }
-      
-      // Check if we are matched
-      if (myEntry['match_id'] != null) {
-        _handleMatchFound(myEntry['match_id'] as String);
-        return;
-      }
+      setState(() => _statusMessage = "Searching for opponents...");
 
-      final waitingPlayers = queue.where((p) => p['match_id'] == null).toList();
-      
-      // Only the "leader" (longest waiter) triggers the match
-      if (waitingPlayers.length >= 2) { // Allow 2 players for testing (normally 4)
-         final leader = waitingPlayers.first;
-         if (leader['user_id'] == _currentUserId && !_isCreator) {
-            _isCreator = true; // Prevent duplicate create calls
-            _createMatch(waitingPlayers.take(4).toList());
-         }
-      }
-      
-      setState(() {
-        _statusMessage = "Searching for players... (${waitingPlayers.length}/4)";
+      // 2. Poll for opponents every 3 seconds
+      _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+        final opponents = await _service.scanForOpponents();
+        
+        if (!mounted) return;
+
+        if (opponents.isNotEmpty) {
+           _handleMatchFound(opponents);
+        } else {
+           // Update UI to show we are still waiting
+           // In a real app we might show "Searching..." with animated dots
+        }
       });
-    });
+      
+    } catch (e) {
+      if (mounted) {
+        setState(() => _statusMessage = "Error: $e");
+      }
+    }
   }
 
-  Future<void> _createMatch(List<Map<String, dynamic>> players) async {
-    setState(() => _statusMessage = "Creating match...");
+  Future<void> _handleMatchFound(List<String> opponents) async {
+    _pollTimer?.cancel();
+    _foundMatch = true;
     
-    // 1. Create Lobby
-    final lobbyCode = await SupabaseService().createLobby();
-    if (lobbyCode == null) return;
-    
-    // TODO: A robust implementation would have createLobby return the full lobby object
-    // including the UUID, so we can update the queue entries with match_id
+    setState(() => _statusMessage = "Opponents found! Creating match...");
+
+    try {
+      final lobbyCode = await _service.createRankedMatch(opponents);
+      
+      if (!mounted) return;
+      
+      // Join the game
+      ref.read(gameStateProvider.notifier).joinGame(lobbyCode);
+      
+      // Navigate to game (close overlay then push)
+      Navigator.pop(context); // Close overlay
+      // Navigation is usually handled by parent or router listener, 
+      // but here we might need to trigger it manually if not listening to game state changes
+      // The parent BattleTab listens to game state or we can just push directly
+      
+      // For now, let's trigger the nav via callback or provider if possible.
+      // Assuming BattleTab handles navigation based on game state, or we can't easily push from here without context issues.
+      // We'll update the game state and let the UI react.
+      
+    } catch (e) {
+      setState(() => _statusMessage = "Failed to start match: $e");
+      _foundMatch = false;
+    }
   }
-  
-  void _handleMatchFound(String matchId) {
-    _joinedLobbyId = matchId;
-    _queueSub?.cancel();
-    
-    // TODO: Navigate to game screen with match ID
-    // Navigator.of(context).pushReplacement(
-    //   MaterialPageRoute(builder: (_) => GameScreen(matchId: matchId)),
-    // );
-    
-    setState(() => _statusMessage = "Match found! Loading...");
-    
-    // For now, just close and let user join via lobby
-    Navigator.of(context).pop();
-  }
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black54,
+      color: Colors.black87,
       child: Center(
         child: Container(
-          margin: const EdgeInsets.all(32),
-          padding: const EdgeInsets.all(24),
+          width: 300,
+          padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: GameTheme.surface,
-            borderRadius: BorderRadius.circular(16),
+            color: GameTheme.surfaceLight,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: GameTheme.accent, width: 2),
+            boxShadow: GameTheme.softShadow,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(
-                color: GameTheme.primary,
-              ),
+              const CircularProgressIndicator(color: GameTheme.accent),
               const SizedBox(height: 24),
               Text(
-                _statusMessage,
-                style: const TextStyle(
-                  color: GameTheme.textPrimary,
-                  fontSize: 16,
-                ),
+                "RANKED MATCHMAKING",
+                style: GameTheme.h2.copyWith(fontSize: 20, color: GameTheme.accent),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
-              TextButton(
-                onPressed: () {
-                  _queueSub?.cancel();
-                  SupabaseService().leaveQueue();
-                  Navigator.of(context).pop();
-                },
-                child: const Text(
-                  'CANCEL',
-                  style: TextStyle(color: GameTheme.error),
+              const SizedBox(height: 16),
+              Text(
+                _statusMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: GameTheme.textSecondary),
+              ),
+              const SizedBox(height: 32),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
                 ),
+                child: const Text("Cancel"),
               ),
             ],
           ),

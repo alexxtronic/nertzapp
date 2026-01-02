@@ -1,10 +1,12 @@
 // import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nertz_royale/services/supabase_service.dart';
+import 'package:nertz_royale/services/matchmaking_service.dart'; // Added
 
 import 'package:nertz_royale/ui/theme/game_theme.dart';
 import 'leaderboard_screen.dart';
@@ -208,63 +210,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // XP Logic
     final xp = (_profile!['total_xp'] as int?) ?? 0;
     
-    // Ranks
-    // Bronze: 0-249 XP
-    // Silver: 250-999 XP
-    // Gold: 1000-4999 XP
-    // Platinum: 5000+ XP
-    String rank = 'Bronze';
-    String trophyAsset = 'assets/trophies/bronze.png';
-    int nextLevelXp = 250;
-    int currentLevelBaseXp = 0;
-    Color ringColor = const Color(0xFFCD7F32); // Bronze
+    // Ranked Logic
+    final rankedPoints = (_profile!['ranked_points'] as int?) ?? 1000;
+    final rankTier = RankTier.fromPoints(rankedPoints);
     
-    if (xp >= 150000) {
-      rank = 'Legend';
-      trophyAsset = 'assets/trophies/legend.png';
-      nextLevelXp = 1000000; // Max
-      currentLevelBaseXp = 150000;
-      ringColor = const Color(0xFFFFC107); // Amber/Gold
-    } else if (xp >= 75000) {
-      rank = 'Grandmaster';
-      trophyAsset = 'assets/trophies/grandmaster.png';
-      nextLevelXp = 150000;
-      currentLevelBaseXp = 75000;
-      ringColor = const Color(0xFFDC2626); // Red 600
-    } else if (xp >= 25000) {
-      rank = 'Master';
-      trophyAsset = 'assets/trophies/master.png';
-      nextLevelXp = 75000;
-      currentLevelBaseXp = 25000;
-      ringColor = const Color(0xFF9333EA); // Purple 600
-    } else if (xp >= 10000) {
-      rank = 'Diamond';
-      trophyAsset = 'assets/trophies/diamond.png';
-      nextLevelXp = 25000;
-      currentLevelBaseXp = 10000;
-      ringColor = const Color(0xFF0EA5E9); // Sky Blue 500
-    } else if (xp >= 5000) {
-      rank = 'Platinum';
-      trophyAsset = 'assets/trophies/platinum.png';
-      nextLevelXp = 10000;
-      currentLevelBaseXp = 5000;
-      ringColor = const Color(0xFFE5E4E2); // Platinum
-    } else if (xp >= 1000) {
-      rank = 'Gold';
-      trophyAsset = 'assets/trophies/gold.png';
-      nextLevelXp = 5000;
-      currentLevelBaseXp = 1000;
-      ringColor = const Color(0xFFFFD700); // Gold
-    } else if (xp >= 250) {
-      rank = 'Silver';
-      trophyAsset = 'assets/trophies/silver.png';
-      nextLevelXp = 1000;
-      currentLevelBaseXp = 250;
-      ringColor = const Color(0xFFC0C0C0); // Silver
-    }
+    // Use Rank for display
+    String rank = rankTier.label;
+    Color ringColor = rankTier.color;
+    // TODO: Use real assets for ranks if available, fallback to existing or generic
+    // Using existing trophy assets mapped to new tiers
+    String trophyAsset = 'assets/trophies/${rank.toLowerCase()}.png';
     
-    final levelProgress = (xp - currentLevelBaseXp) / (nextLevelXp - currentLevelBaseXp);
-    final isMaxLevel = xp >= 5000;
+    // Level Progress based on XP (Keep Level separate from Rank)
+    // Simple level formula: Level = sqrt(XP/100)
+    final level = sqrt(xp / 100).floor();
+    final nextLevelXp = (level + 1) * (level + 1) * 100;
+    final currentLevelBaseXp = level * level * 100;
+    
+    // Avoid division by zero
+    final totalLevelXp = nextLevelXp - currentLevelBaseXp;
+    final levelProgress = totalLevelXp > 0 ? (xp - currentLevelBaseXp) / totalLevelXp : 0.0;
+    
+    final isMaxLevel = level >= 100; // Cap at level 100 for display purposes?
 
     return Scaffold(
       backgroundColor: GameTheme.surfaceLight,
@@ -294,7 +261,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                        width: 130,
                        height: 130,
                        child: CircularProgressIndicator(
-                         value: isMaxLevel ? 1.0 : levelProgress,
+                         value: levelProgress,
                          strokeWidth: 6,
                          backgroundColor: Colors.grey.shade200,
                          valueColor: AlwaysStoppedAnimation<Color>(ringColor),
@@ -445,13 +412,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                        child: Column(
                          children: [
                             Text(
-                              rank.toUpperCase(), 
-                              style: const TextStyle(
-                                fontSize: 24, 
-                                fontWeight: FontWeight.w900, 
-                                letterSpacing: 1.2,
-                                color: GameTheme.textPrimary
-                              )
+                              rank.toUpperCase(),
+                              style: TextStyle(
+                                color: ringColor,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 24,
+                                letterSpacing: 2.0,
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // Points Display
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: ringColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: ringColor.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.emoji_events, size: 16, color: ringColor),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '$rankedPoints Points',
+                                    style: TextStyle(
+                                      color: ringColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 16),
                             Container(

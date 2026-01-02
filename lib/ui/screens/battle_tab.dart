@@ -14,6 +14,7 @@ import '../../services/audio_service.dart';
 import '../../state/economy_provider.dart';
 import '../theme/game_theme.dart';
 import '../widgets/bot_difficulty_dialog.dart';
+import '../widgets/quick_match_overlay.dart'; // Added
 import 'game_screen.dart';
 import 'main_navigation_screen.dart';
 
@@ -59,18 +60,18 @@ class _BattleTabState extends ConsumerState<BattleTab> {
   }
 
   Future<void> _handleRankedMatch() async {
-    setState(() => _isLoading = true);
-    
-    // TODO: Implement ranked matchmaking with ELO
-    // For now, show coming soon message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ranked matchmaking coming soon! 🏆'),
-        backgroundColor: GameTheme.primary,
-      ),
+    // Show matchmaking overlay
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const QuickMatchOverlay(),
     );
     
-    setState(() => _isLoading = false);
+    // Check if we joined a game (via provider change)
+    final matchId = ref.read(matchIdProvider);
+    if (matchId != null) {
+      if (mounted) _navigateToGame();
+    }
   }
 
   void _goToFriendsTab() {

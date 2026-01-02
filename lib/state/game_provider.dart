@@ -7,6 +7,7 @@ import 'dart:math';
 import 'package:flutter/material.dart' hide ConnectionState;
 import '../../services/supabase_service.dart';
 import '../../services/mission_service.dart';
+import '../../services/matchmaking_service.dart'; // Added
 import '../models/card.dart';
 import 'package:nertz_royale/engine/bot_logic.dart';
 import 'package:nertz_royale/state/bot_difficulty_provider.dart';
@@ -551,7 +552,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       MissionService().trackGamePlayed();
       
       // Track win/nertz call for winner
-      if (winnerId == currentPlayerId) {
+      final isWin = winnerId == currentPlayerId;
+      if (isWin) {
         final duration = state!.roundStartTime != null 
             ? DateTime.now().difference(state!.roundStartTime!).inSeconds 
             : null;
@@ -559,6 +561,12 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         MissionService().trackWin(durationSeconds: duration);
         MissionService().trackNertzCall();
       }
+      
+      // Track Ranked Result (ELO)
+      // For now, simple logic: WIN = +25, LOSS = -10 (MVP)
+      // Real implementation would pass opponent ELOs
+      final pointsChange = isWin ? 25 : -10;
+      MatchmakingService().reportResult(isWin: isWin, pointsChange: pointsChange);
     }
 
     state!.endRound(winnerId);
