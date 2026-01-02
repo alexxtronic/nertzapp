@@ -104,14 +104,21 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
        _statusMessage = "Launching...";
      });
      
+     // Calculate minimum opponents based on current players
+     // _foundAvatars includes us, so opponents = total - 1
+     final minOpponents = (_foundAvatars.length - 1).clamp(1, 3);
+     
+     debugPrint('🚀 Finalizing match with ${_foundAvatars.length} players (minOpponents: $minOpponents)');
+     
      // Trigger the match creation.
-     // Thanks to our DB locking, if everyone calls this at 0s, only one will succeed and become Host.
-     final matchId = await _service.tryCreateMatch();
+     final matchId = await _service.tryCreateMatch(minOpponents: minOpponents);
      if (matchId != null) {
+       debugPrint('✅ Match created: $matchId - I am HOST');
        _handleMatchFound(matchId, isHost: true);
      } else {
+       debugPrint('⏳ Match creation failed, waiting for host...');
        // If failed, resume polling to detect if someone else created the match
-       setState(() => _statusMessage = "Waiting for match...");
+       setState(() => _statusMessage = "Waiting for host...");
        _resumePolling();
      }
   }
@@ -211,7 +218,8 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
     try {
       if (isHost) {
         debugPrint('👑 I am the host! creating game state for $matchId');
-        ref.read(gameStateProvider.notifier).hostGame(matchId);
+        // Auto-start for ranked matches - skip lobby screen
+        ref.read(gameStateProvider.notifier).hostGame(matchId, true);
       } else {
         debugPrint('👋 I am a client! Joining game $matchId');
         ref.read(gameStateProvider.notifier).joinGame(matchId);

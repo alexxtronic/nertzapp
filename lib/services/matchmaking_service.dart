@@ -135,15 +135,27 @@ class MatchmakingService {
     }
   }
 
-  /// Clean up stale queue entries (older than 30 seconds)
+  /// Clean up stale queue entries (older than 2 minutes)
+  /// Called occasionally, not on every poll
+  static DateTime? _lastCleanup;
+  
   Future<void> _cleanupStaleEntries() async {
+    // Only run cleanup every 30 seconds max
+    final now = DateTime.now();
+    if (_lastCleanup != null && now.difference(_lastCleanup!).inSeconds < 30) {
+      return; // Skip, ran recently
+    }
+    _lastCleanup = now;
+    
     try {
-      final cutoff = DateTime.now().toUtc().subtract(const Duration(seconds: 30)).toIso8601String();
+      // 2 minute timeout - very generous
+      final cutoff = now.toUtc().subtract(const Duration(minutes: 2)).toIso8601String();
       await _supabase
           .from('matchmaking_queue')
           .delete()
           .eq('status', 'searching')
           .lt('updated_at', cutoff);
+      debugPrint('🧹 Cleaned up stale queue entries');
     } catch (e) {
       // Ignore cleanup errors
     }
@@ -154,7 +166,7 @@ class MatchmakingService {
   Future<Map<String, dynamic>> checkQueueStatus() async {
     if (_currentUserId == null) return {};
     
-    // Clean stale entries first
+    // Clean stale entries occasionally (throttled internally)
     await _cleanupStaleEntries();
     
     try {
@@ -243,11 +255,13 @@ class MatchmakingService {
 
       final opponents = result as List;
       
-      // Check if we meet the minimum requirement
       if (opponents.length >= minOpponents) {
         // Take as many as we found (up to 3)
         final opponentIds = opponents.take(3).map((o) => o['user_id'] as String).toList();
         final matchId = _uuid.v4().substring(0, 6).toUpperCase();
+        
+        debugPrint('🎮 tryCreateMatch: Found ${opponents.length} opponents, creating match $matchId');
+        debugPrint('🎮 Opponent IDs: $opponentIds');
         
         // Atomic Create
         final success = await _supabase.rpc('create_ranked_match', params: {
@@ -256,17 +270,21 @@ class MatchmakingService {
           'p_match_id': matchId,
         });
         
+        debugPrint('🎮 create_ranked_match returned: $success');
+        
         if (success == true) {
-          debugPrint('✅ Created Match $matchId with 4 players');
+          debugPrint('✅ Created Match $matchId with ${opponentIds.length + 1} players');
           return matchId;
         } else {
-             debugPrint('⚠️ Failed to create match (Race condition)');
+          debugPrint('⚠️ create_ranked_match returned false (Race condition or players left)');
         }
+      } else {
+        debugPrint('⚠️ Not enough opponents: found ${opponents.length}, need $minOpponents');
       }
       
       return null;
     } catch (e) {
-      debugPrint('Matchmaking scan error: $e');
+      debugPrint('❌ Matchmaking scan error: $e');
       return null;
     }
   }

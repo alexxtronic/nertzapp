@@ -319,10 +319,10 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     });
   }
   
-  void hostGame([String? matchId]) async {
+  void hostGame([String? matchId, bool autoStart = false]) async {
     // For P2P, host uses provided code or generates one
     final id = matchId ?? SupabaseGameClient.generateMatchId();
-    debugPrint('🏠 hostGame called. Using matchId: $id');
+    debugPrint('🏠 hostGame called. Using matchId: $id, autoStart: $autoStart');
     
     // Fetch card back
     String? cardBack;
@@ -347,8 +347,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     joinGame(id);
     
     // IMPORTANT: Broadcast state periodically for a few seconds to ensure clients receive it
-    // This fixes the race condition where clients might connect before the host is ready
-    int broadcastCountdown = 5; // Broadcast 5 times over 5 seconds
+    int broadcastCountdown = 5;
     Timer.periodic(const Duration(seconds: 1), (timer) {
       if (broadcastCountdown <= 0 || state == null || state!.phase == GamePhase.playing) {
         timer.cancel();
@@ -358,6 +357,16 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       client.send(StateSnapshotMessage(gameState: state!));
       broadcastCountdown--;
     });
+    
+    // AUTO-START: For ranked matchmaking, start the game after a brief delay
+    if (autoStart) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (state != null && state!.phase == GamePhase.lobby) {
+          debugPrint('🚀 Auto-starting ranked game!');
+          startNextRound();
+        }
+      });
+    }
   }
   
   void handleMessage(GameMessage message) {
