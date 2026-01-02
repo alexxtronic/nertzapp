@@ -97,34 +97,34 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
         color: Colors.white, // Double insurance for opacity
         child: SafeArea(
           child: Column(
-          children: [
-            // Currency Header (tappable)
-            _buildCurrencyHeader(),
-            
-            // Main Content
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.02),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    ),
-                  );
-                },
-                child: KeyedSubtree(
-                  key: ValueKey<int>(currentIndex),
-                  child: _screens[currentIndex],
+            children: [
+              // Currency Header (tappable)
+              _buildCurrencyHeader(),
+              
+              // Main Content
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.02),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(currentIndex),
+                    child: _screens[currentIndex],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: _buildBottomNavBar(currentIndex),

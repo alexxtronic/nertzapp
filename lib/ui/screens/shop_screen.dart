@@ -31,11 +31,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       backgroundColor: GameTheme.surfaceLight,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        automaticallyImplyLeading: false, // No back button for main tab
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: GameTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: null,
         title: const Text(
           'Shop',
           style: TextStyle(
@@ -290,7 +288,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     final commonProducts = products.where((p) => p.priceCoins <= 150).toList();
     final uncommonProducts = products.where((p) => p.priceCoins > 150 && p.priceCoins <= 300).toList();
     final rareProducts = products.where((p) => p.priceCoins > 300 && p.priceCoins <= 750).toList();
-    final ultraRareProducts = products.where((p) => p.priceCoins > 750).toList();
+    final ultraRareProducts = products.where((p) => p.priceCoins > 750 && p.priceCoins <= 4999).toList();
+    final legendaryProducts = products.where((p) => p.priceCoins > 4999).toList();
     
     // Sort logic within groups if needed? Assuming DB sort_order is fine, or maybe sort by price ascending?
     // Let's keep them in the order they came from the DB (likely default sort) for now.
@@ -312,6 +311,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         ],
         if (ultraRareProducts.isNotEmpty) ...[
           _buildStyleSection('Ultra-Rare', ultraRareProducts, inventory, balance),
+          const SizedBox(height: 24),
+        ],
+        if (legendaryProducts.isNotEmpty) ...[
+          _buildStyleSection('Legendary ★', legendaryProducts, inventory, balance),
           const SizedBox(height: 24),
         ],
       ],

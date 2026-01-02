@@ -29,6 +29,11 @@ class SupabaseService {
     await _supabase.auth.signInAnonymously();
   }
 
+  /// Sign out
+  Future<void> signOut() async {
+    await _supabase.auth.signOut();
+  }
+
   /// Get current user profile
   Future<Map<String, dynamic>?> getProfile() async {
     if (currentUser == null) return null;

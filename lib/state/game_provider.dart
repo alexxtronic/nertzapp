@@ -345,6 +345,19 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     
     debugPrint('🏠 GameState created. hostId: ${state!.hostId}');
     joinGame(id);
+    
+    // IMPORTANT: Broadcast state periodically for a few seconds to ensure clients receive it
+    // This fixes the race condition where clients might connect before the host is ready
+    int broadcastCountdown = 5; // Broadcast 5 times over 5 seconds
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (broadcastCountdown <= 0 || state == null || state!.phase == GamePhase.playing) {
+        timer.cancel();
+        return;
+      }
+      debugPrint('📢 Host Broadcasting State (${broadcastCountdown}s remaining)...');
+      client.send(StateSnapshotMessage(gameState: state!));
+      broadcastCountdown--;
+    });
   }
   
   void handleMessage(GameMessage message) {

@@ -238,7 +238,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: const BackButton(color: GameTheme.textPrimary),
+        automaticallyImplyLeading: false, // Removed back button per request
         title: const Text("Profile", style: TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
@@ -535,8 +535,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                  ),
                ],
              ),
-             
-          ],
+              
+              const SizedBox(height: 40),
+              
+              // Sign Out Button
+              TextButton.icon(
+                onPressed: () async {
+                  // Show confirmation? Or just sign out.
+                  // For now, just sign out as requested.
+                  await _service.signOut();
+                  // Navigate to root to ensure AuthGate picks it up cleanly
+                  if (context.mounted) {
+                    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                  }
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  backgroundColor: Colors.red.withOpacity(0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                ),
+                icon: const Icon(Icons.logout, color: Colors.red),
+                label: const Text(
+                  'Sign Out', 
+                  style: TextStyle(
+                    color: Colors.red, 
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 48), // Bottom padding for scroll
+           ],
         ),
       ),
     );

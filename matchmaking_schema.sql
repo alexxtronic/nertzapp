@@ -15,6 +15,36 @@ ADD COLUMN IF NOT EXISTS losses INT DEFAULT 0;
 -- ... (skipping index)
 
 -- ============================================
+-- FUNCTION: Find Ranked Opponents
+-- ============================================
+
+CREATE OR REPLACE FUNCTION public.find_ranked_opponents(
+  p_user_id UUID,
+  p_points INT,
+  p_limit INT
+)
+RETURNS TABLE (
+  user_id UUID,
+  ranked_points INT,
+  score_diff INT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    mq.user_id,
+    mq.ranked_points,
+    ABS(mq.ranked_points - p_points) as score_diff
+  FROM public.matchmaking_queue mq
+  WHERE mq.status = 'searching'
+    AND mq.user_id != p_user_id
+    AND mq.updated_at > now() - interval '5 minutes'
+  ORDER BY score_diff ASC
+  LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- ============================================
 -- FUNCTION: Update ELO (Called at game end)
 -- ============================================
 

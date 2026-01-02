@@ -139,32 +139,54 @@ class MatchmakingService {
          return {
            'status': 'matched', 
            'matchId': myEntry['match_id'],
-           'avatars': <String?>[], // Not needed when matched
+           'avatars': <String?>[], 
+           'votes': 0, // Not needed
          };
       }
       
       // 2. Get searching players (up to 4)
       final searchingEntries = await _supabase
           .from('matchmaking_queue')
-          .select('avatar_url')
+          .select('avatar_url, wants_to_start')
           .eq('status', 'searching')
           .order('created_at', ascending: true)
           .limit(4);
       
       final avatars = (searchingEntries as List).map((e) => e['avatar_url'] as String?).toList();
+      final hasVoted = (searchingEntries).map((e) => e['wants_to_start'] as bool? ?? false).toList();
+      final votes = hasVoted.where((v) => v).length;
+      final total = searchingEntries.length;
 
       return {
         'status': 'searching',
         'matchId': null,
-        'avatars': avatars
+        'avatars': avatars,
+        'hasVoted': hasVoted,
+        'votes': votes,
+        'total': total,
       };
       
     } catch (e) {
       debugPrint('Queue status check error: $e');
-      return {'status': 'error', 'avatars': <String?>[]};
+      return {'status': 'error', 'avatars': <String?>[], 'votes': 0, 'total': 0};
     }
   }
 
+  /// Check if I am the host of this match (First player by created_at)
+  /// [Deprecated] - We now use the "Active Starter" rule (RPC return value)
+  
+  /// Vote to Start
+  /// Just records the vote. Does NOT trigger match creation.
+  /// The countdown logic in the UI will later call tryCreateMatch.
+  Future<void> voteToStart() async {
+    if (_currentUserId == null) return;
+    try {
+      await _supabase.rpc('vote_to_start', params: {'p_user_id': _currentUserId!});
+      debugPrint('🗳️ Vote recorded!');
+    } catch (e) {
+      debugPrint('Error voting to start: $e');
+    }
+  }
   /// Search for match (Client-side logic)
   /// Returns matchId if match is CREATED by me, null otherwise
   /// [minOpponents] - Minimum opponents required to create match (default 3 for 4-player game)
