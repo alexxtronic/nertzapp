@@ -4,6 +4,7 @@ import '../../services/matchmaking_service.dart';
 import '../theme/game_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/game_provider.dart';
+import '../screens/game_screen.dart';
 
 class QuickMatchOverlay extends ConsumerStatefulWidget {
   const QuickMatchOverlay({super.key});
@@ -15,9 +16,11 @@ class QuickMatchOverlay extends ConsumerStatefulWidget {
 class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
   Timer? _pollTimer;
   Timer? _countdownTimer;
+  Timer? _heartbeatTimer;
   String _statusMessage = "Joining queue...";
   final _service = MatchmakingService();
   bool _foundMatch = false;
+  bool _isFinalized = false; // Prevents restart after countdown ends
   List<String?> _foundAvatars = [];
   List<bool> _playersVoted = [];
   int _countdown = 10;
@@ -28,20 +31,37 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
   void initState() {
     super.initState();
     _startMatchmaking();
+    _startHeartbeat();
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
-    _cancelCountdown();
+    _countdownTimer?.cancel();
+    _heartbeatTimer?.cancel();
     if (!_foundMatch) {
+      // IMPORTANT: Leave queue when overlay closes
       _service.leaveQueue();
     }
     super.dispose();
   }
+  
+  /// Heartbeat: Updates our queue entry every 10s so DB knows we're alive
+  void _startHeartbeat() {
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+      if (!mounted || _foundMatch) {
+        timer.cancel();
+        return;
+      }
+      await _service.sendHeartbeat();
+    });
+  }
 
   void _startCountdown() {
-    if (_isCountdownActive) return;
+    if (_isCountdownActive || _isFinalized) return;
+    
+    // Cancel poll timer during countdown to prevent interference
+    _pollTimer?.cancel();
     
     setState(() {
       _isCountdownActive = true;
@@ -57,7 +77,8 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
       });
 
       if (_countdown <= 0) {
-        _cancelCountdown();
+        timer.cancel();
+        _countdownTimer = null;
         _finalizeMatchStart();
       }
     });
@@ -76,14 +97,35 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
   }
 
   Future<void> _finalizeMatchStart() async {
-     setState(() => _statusMessage = "Launching...");
+     _isFinalized = true; // Prevent any restart of countdown
+     
+     setState(() { 
+       _isCountdownActive = false;
+       _statusMessage = "Launching...";
+     });
+     
      // Trigger the match creation.
      // Thanks to our DB locking, if everyone calls this at 0s, only one will succeed and become Host.
      final matchId = await _service.tryCreateMatch();
      if (matchId != null) {
        _handleMatchFound(matchId, isHost: true);
+     } else {
+       // If failed, resume polling to detect if someone else created the match
+       setState(() => _statusMessage = "Waiting for match...");
+       _resumePolling();
      }
-     // If null, we wait for the poll loop to pick up that someone else succeeded (status == 'matched')
+  }
+  
+  void _resumePolling() {
+    _pollTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      final status = await _service.checkQueueStatus();
+      if (!mounted) return;
+      
+      if (status['status'] == 'matched') {
+        timer.cancel();
+        _handleMatchFound(status['matchId'], isHost: false);
+      }
+    });
   }
 
   Future<void> _startMatchmaking() async {
@@ -119,34 +161,29 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
             _playersVoted = votes;
           });
 
-          // Countdown Logic:
-          // Start if: Total >= 2 AND All Voted
-          if (totalCount >= 2 && voteCount == totalCount) {
+          // AUTO-START: 4 players = instant start (no voting needed)
+          if (totalCount >= 4) {
+            final matchId = await _service.tryCreateMatch();
+            if (matchId != null) {
+              _handleMatchFound(matchId, isHost: true);
+            }
+            return; // Exit poll callback
+          }
+          
+          // MAJORITY VOTE: 2-3 players need majority to start countdown
+          // 2 players: 2/2 needed (both)
+          // 3 players: 2/3 needed
+          final majorityThreshold = (totalCount / 2).ceil();
+          final hasMajority = voteCount >= majorityThreshold && totalCount >= 2;
+          
+          if (hasMajority) {
              _startCountdown();
           } else {
              // If condition breaks (new player joined, or < 2), cancel
              if (_isCountdownActive) {
                 _cancelCountdown();
-             } else if (!_isCountdownActive) {
-                // Update status message only if not counting down
-                // If 4 players auto-start logic is still desired, we could keep it, 
-                // but user asked for "Vote to start". Let's rely purely on voting for consistency.
-                // Or maybe auto-vote for 4th player? 
-                // User said: "if 4th person enters... causes a start". 
-                // We'll simulate this by auto-triggering the countdown or vote.
-                // For now, let's stick to explicitly voting to be safe, or auto-vote for everyone if 4.
-                
-                if (totalCount >= 4) {
-                   // Auto-start immediate if 4 players? Or start countdown?
-                   // User said "4th person... causes a 'start'".
-                   // Let's just start the countdown immediately if 4 players are present.
-                   // Actually, simplest implies: If 4 players, treat as if all voted?
-                   // No, UI should show them voting.
-                   // Let's stick to: "Vote status: X/Y"
-                   setState(() => _statusMessage = "Waiting for votes ($voteCount/$totalCount)...");
-                } else {
-                   setState(() => _statusMessage = "Waiting for votes ($voteCount/$totalCount)...");
-                }
+             } else {
+                setState(() => _statusMessage = "Waiting for votes ($voteCount/$totalCount)...");
              }
           }
         }
@@ -179,7 +216,19 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
         debugPrint('👋 I am a client! Joining game $matchId');
         ref.read(gameStateProvider.notifier).joinGame(matchId);
       }
-      Navigator.pop(context); 
+      
+      // Close overlay and navigate to game screen
+      Navigator.pop(context);
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const GameScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
+      );
     } catch (e) {
       setState(() => _statusMessage = "Failed to join: $e");
       _foundMatch = false;

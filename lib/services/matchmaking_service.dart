@@ -115,8 +115,37 @@ class MatchmakingService {
     if (_currentUserId == null) return;
     try {
       await _supabase.from('matchmaking_queue').delete().eq('user_id', _currentUserId!);
+      debugPrint('👋 Left matchmaking queue');
     } catch (e) {
       // Ignore error if already gone
+    }
+  }
+
+  /// Send heartbeat to keep our queue entry alive
+  Future<void> sendHeartbeat() async {
+    if (_currentUserId == null) return;
+    try {
+      await _supabase
+          .from('matchmaking_queue')
+          .update({'updated_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('user_id', _currentUserId!)
+          .eq('status', 'searching');
+    } catch (e) {
+      // Ignore heartbeat failures
+    }
+  }
+
+  /// Clean up stale queue entries (older than 30 seconds)
+  Future<void> _cleanupStaleEntries() async {
+    try {
+      final cutoff = DateTime.now().toUtc().subtract(const Duration(seconds: 30)).toIso8601String();
+      await _supabase
+          .from('matchmaking_queue')
+          .delete()
+          .eq('status', 'searching')
+          .lt('updated_at', cutoff);
+    } catch (e) {
+      // Ignore cleanup errors
     }
   }
 
@@ -124,6 +153,9 @@ class MatchmakingService {
   /// Returns {status: 'searching'|'matched', matchId: uuid, avatars: List<String?>}
   Future<Map<String, dynamic>> checkQueueStatus() async {
     if (_currentUserId == null) return {};
+    
+    // Clean stale entries first
+    await _cleanupStaleEntries();
     
     try {
       // 1. Check my status
