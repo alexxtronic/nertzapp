@@ -144,13 +144,37 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
               ),
               const SizedBox(height: 32),
               
-              OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
-                ),
-                child: const Text("Leave Queue"),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                    child: const Text("Leave Queue"),
+                  ),
+                  const SizedBox(width: 16),
+                  if (_playersFound >= 2)
+                    ElevatedButton(
+                      onPressed: () async {
+                         setState(() => _statusMessage = "Starting match with $_playersFound players...");
+                         // Try to create match with minimum required opponents (Total - Me)
+                         final matchId = await _service.tryCreateMatch(minOpponents: _playersFound - 1);
+                         if (matchId != null) {
+                           _handleMatchFound(matchId);
+                         } else {
+                           setState(() => _statusMessage = "Failed to force start. Trying again...");
+                         }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: GameTheme.accent,
+                        foregroundColor: GameTheme.textPrimary,
+                      ),
+                      child: const Text("Start Now!"),
+                    ),
+                ],
               ),
             ],
           ),

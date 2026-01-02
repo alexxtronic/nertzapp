@@ -189,12 +189,31 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
     Color color = const Color(0xFF8B5CF6), // Default purple
   }) {
     // Extract numbers from title/description if needed, or use ID map
-    int amount = 0;
-    // Simple parsing logic or map
-    if (product.id.contains('small')) amount = 5;
-    else if (product.id.contains('medium')) amount = 12;
-    else if (product.id.contains('large')) amount = 25;
-    else if (product.id.contains('huge')) amount = 75;
+    int gemAmount = 0;
+    int coinAmount = 0;
+    
+    // Pricing Logic Update
+    if (isGem) {
+      if (product.id.contains('small')) gemAmount = 5;
+      else if (product.id.contains('medium')) gemAmount = 20; // $2.99
+      else if (product.id.contains('large')) gemAmount = 50; // $5.99
+      else if (product.id.contains('huge')) gemAmount = 250; // $19.99
+    } else {
+      // Bundle Logic
+      // Assuming IDs contain price hint or ordered, but for now map based on approximate price text or ID
+      // If we can't rely on price parsing, we rely on IDs.
+      // Let's assume standard IDs for now or fallback logic.
+      if (product.price.contains('2.99') || product.id.contains('starter')) {
+        gemAmount = 15;
+        coinAmount = 1500;
+      } else if (product.price.contains('10.99') || product.id.contains('pro')) {
+        gemAmount = 100;
+        coinAmount = 2000;
+      } else if (product.price.contains('29.99') || product.id.contains('ultimate')) {
+        gemAmount = 350;
+        coinAmount = 5000;
+      }
+    }
     
     // For bundle
     if (!isGem) {
@@ -202,7 +221,7 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
     }
 
     if (isGem) {
-      // Grid Card Style
+      // Grid Card Style (Unchanged mostly, just amounts)
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -243,7 +262,7 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '$amount',
+                    '$gemAmount',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -288,7 +307,7 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
         ),
       );
     } else {
-      // List Tile Style (Bundle)
+      // List Tile Style (Bundle) - FIX OVERLAP HERE
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -307,6 +326,7 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -317,22 +337,26 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
                     child: Icon(Icons.card_giftcard, color: color, size: 28),
                   ),
                   const SizedBox(width: 14),
+                  
+                  // Expanded Section for Title/Desc
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        // Row for Title + Badge
+                        Wrap( // Use Wrap instead of Row to handle overflow gracefully if really needed, or just Row
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
                           children: [
                             Text(
-                              product.title, // 'Starter Bundle'
+                              product.title.replaceAll(RegExp(r'\(.*\)'), '').trim(), // Clean title
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                                 color: GameTheme.textPrimary,
                               ),
                             ),
-                            if (bestValue) ...[
-                              const SizedBox(width: 8),
+                            if (bestValue)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
@@ -344,16 +368,26 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
                                   style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                                 ),
                               ),
-                            ],
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(product.description, style: GameTheme.bodyMedium),
+                        // Custom Bundle Description based on our logic
+                        Text(
+                          '$coinAmount Coins + $gemAmount Gems',
+                          style: const TextStyle(
+                            color: GameTheme.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
                     ),
                   ),
+                  
+                  // Price Button
+                  const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Smaller padding
                     decoration: BoxDecoration(
                       color: color,
                       borderRadius: BorderRadius.circular(12),
@@ -363,7 +397,7 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 13, // Smaller font size as requested
                       ),
                     ),
                   ),

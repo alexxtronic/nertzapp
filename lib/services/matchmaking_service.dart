@@ -164,7 +164,8 @@ class MatchmakingService {
 
   /// Search for match (Client-side logic)
   /// Returns matchId if match is CREATED by me, null otherwise
-  Future<String?> tryCreateMatch() async {
+  /// [minOpponents] - Minimum opponents required to create match (default 3 for 4-player game)
+  Future<String?> tryCreateMatch({int minOpponents = 3}) async {
     if (_currentUserId == null) return null;
 
     try {
@@ -176,7 +177,7 @@ class MatchmakingService {
           .single();
       final myPoints = profile['ranked_points'] as int? ?? 0;
 
-      // Find 3 opponents (total 4)
+      // Always try to find up to 3 opponents to fill the lobby
       final result = await _supabase.rpc('find_ranked_opponents', params: {
         'p_user_id': _currentUserId,
         'p_points': myPoints,
@@ -185,8 +186,9 @@ class MatchmakingService {
 
       final opponents = result as List;
       
-      // NEED 3 opponents for a 4-player game
-      if (opponents.length >= 3) {
+      // Check if we meet the minimum requirement
+      if (opponents.length >= minOpponents) {
+        // Take as many as we found (up to 3)
         final opponentIds = opponents.take(3).map((o) => o['user_id'] as String).toList();
         final matchId = _uuid.v4().substring(0, 6).toUpperCase();
         
