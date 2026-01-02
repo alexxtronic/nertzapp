@@ -5,7 +5,9 @@ library;
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart' hide ConnectionState;
-import 'package:nertz_royale/services/supabase_service.dart';
+import '../../services/supabase_service.dart';
+import '../../services/mission_service.dart';
+import '../models/card.dart';
 import 'package:nertz_royale/engine/bot_logic.dart';
 import 'package:nertz_royale/state/bot_difficulty_provider.dart';
 import 'package:nertz_royale/state/economy_provider.dart';
@@ -540,9 +542,31 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   }
   
   void endRound(String winnerId) {
-    if (state != null && state!.phase == GamePhase.playing) {
-      state!.endRound(winnerId);
-      state = GameState.fromJson(state!.toJson());
+    if (state == null) return;
+    
+    // Mission Tracking
+    final currentPlayerId = client.playerId;
+    if (currentPlayerId != null) {
+      // Track game played for everyone
+      MissionService().trackGamePlayed();
+      
+      // Track win/nertz call for winner
+      if (winnerId == currentPlayerId) {
+        final duration = state!.roundStartTime != null 
+            ? DateTime.now().difference(state!.roundStartTime!).inSeconds 
+            : null;
+            
+        MissionService().trackWin(durationSeconds: duration);
+        MissionService().trackNertzCall();
+      }
+    }
+
+    state!.endRound(winnerId);
+    state = GameState.fromJson(state!.toJson()); // Notify listeners
+    
+    // Sync state if host
+    if (state!.hostId == client.playerId) {
+      client.updateState(state!);
     }
   }
   

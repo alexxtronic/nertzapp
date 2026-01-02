@@ -9,70 +9,53 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/game_theme.dart';
+import '../../services/mission_service.dart';
+import '../widgets/currency_display.dart'; // For reward animation
 
-/// Mission model
-class Mission {
-  final String id;
-  final String title;
-  final String description;
-  final int rewardCoins;
-  final int target;
-  final int progress;
-  final bool claimed;
-  final IconData icon;
+// Mission model removed - using UserMission from service
 
-  const Mission({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.rewardCoins,
-    required this.target,
-    this.progress = 0,
-    this.claimed = false,
-    this.icon = Icons.star,
-  });
+/// Provider for daily missions
+final dailyMissionsProvider = FutureProvider<List<UserMission>>((ref) async {
+  return await MissionService().getDailyMissions();
+});
 
-  bool get isComplete => progress >= target;
-  double get progressPercent => (progress / target).clamp(0.0, 1.0);
-}
-
-/// Sample daily missions (will be backend-driven later)
-final dailyMissionsProvider = StateProvider<List<Mission>>((ref) => [
-  const Mission(
-    id: 'win_1',
-    title: 'Quick Victory',
-    description: 'Win 1 Nertz game',
-    rewardCoins: 20,
-    target: 1,
-    progress: 0,
-    icon: Icons.emoji_events,
-  ),
-  const Mission(
-    id: 'win_3',
-    title: 'Triple Threat',
-    description: 'Win 3 Nertz games',
-    rewardCoins: 50,
-    target: 3,
-    progress: 1, // Example: 1 done
-    icon: Icons.workspace_premium,
-  ),
-  const Mission(
-    id: 'win_5',
-    title: 'Nertz Champion',
-    description: 'Win 5 Nertz games',
-    rewardCoins: 100,
-    target: 5,
-    progress: 2, // Example: 2 done
-    icon: Icons.military_tech,
-  ),
-]);
-
-class MissionsTab extends ConsumerWidget {
+class MissionsTab extends ConsumerStatefulWidget {
   const MissionsTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final missions = ref.watch(dailyMissionsProvider);
+  ConsumerState<MissionsTab> createState() => _MissionsTabState();
+}
+
+class _MissionsTabState extends ConsumerState<MissionsTab> {
+  Future<void> _handleClaim(UserMission mission) async {
+    if (!mission.isCompleted || mission.isClaimed) return;
+    
+    // Optimistic update handled by service call + refresh
+    final reward = await MissionService().claimReward(mission.id);
+    
+    if (reward > 0 && mounted) {
+      // Refresh missions list
+      ref.refresh(dailyMissionsProvider);
+      
+      // Show reward popup
+      showDialog(
+        context: context,
+        barrierColor: Colors.black45,
+        builder: (_) => Center(
+          child: CurrencyRewardPopup(
+            amount: reward,
+            onComplete: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final missionsAsync = ref.watch(dailyMissionsProvider);
     
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -123,10 +106,24 @@ class MissionsTab extends ConsumerWidget {
           const SizedBox(height: 24),
           
           // Mission cards
-          ...missions.map((mission) => Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _MissionCard(mission: mission),
-          )),
+          missionsAsync.when(
+            data: (missions) {
+              if (missions.isEmpty) {
+                return const Center(child: Text("No missions available today"));
+              }
+              return Column(
+                children: missions.map((mission) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _MissionCard(
+                    mission: mission, 
+                    onClaim: () => _handleClaim(mission),
+                  ),
+                )).toList(),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) => Center(child: Text('Error: $err')),
+          ),
           
           const SizedBox(height: 32),
         ],
@@ -136,13 +133,31 @@ class MissionsTab extends ConsumerWidget {
 }
 
 class _MissionCard extends StatelessWidget {
-  final Mission mission;
+  final UserMission mission;
+  final VoidCallback onClaim;
   
-  const _MissionCard({required this.mission});
+  const _MissionCard({
+    required this.mission,
+    required this.onClaim,
+  });
+
+  IconData _getIcon(String iconName) {
+    switch (iconName) {
+      case 'emoji_events': return Icons.emoji_events;
+      case 'workspace_premium': return Icons.workspace_premium;
+      case 'military_tech': return Icons.military_tech;
+      case 'bolt': return Icons.bolt;
+      case 'people': return Icons.people;
+      case 'campaign': return Icons.campaign;
+      default: return Icons.star;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isComplete = mission.isComplete;
+    final isComplete = mission.isCompleted;
+    final isClaimed = mission.isClaimed;
+    final iconData = _getIcon(mission.icon);
     
     return Container(
       decoration: BoxDecoration(
@@ -166,7 +181,7 @@ class _MissionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                mission.icon,
+                iconData,
                 color: isComplete ? GameTheme.success : GameTheme.primary,
                 size: 24,
               ),
@@ -179,7 +194,7 @@ class _MissionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    mission.title,
+                    mission.name,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -227,29 +242,45 @@ class _MissionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isComplete 
-                        ? GameTheme.success 
-                        : const Color(0xFFFFD700).withOpacity(0.15),
+                    color: isClaimed 
+                        ? Colors.grey.withOpacity(0.2)
+                        : isComplete 
+                            ? GameTheme.success 
+                            : const Color(0xFFFFD700).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isComplete ? Icons.check : Icons.monetization_on,
-                        size: 16,
-                        color: isComplete ? Colors.white : const Color(0xFFFFD700),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isComplete ? 'Claim' : '+${mission.rewardCoins}',
-                        style: TextStyle(
-                          color: isComplete ? Colors.white : const Color(0xFFB8860B),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: isComplete && !isClaimed ? onClaim : null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isClaimed ? Icons.check_circle : (isComplete ? Icons.check : Icons.monetization_on),
+                              size: 16,
+                              color: isClaimed 
+                                  ? Colors.grey 
+                                  : (isComplete ? Colors.white : const Color(0xFFFFD700)),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isClaimed ? 'Done' : (isComplete ? 'Claim' : '+${mission.rewardCoins}'),
+                              style: TextStyle(
+                                color: isClaimed 
+                                    ? Colors.grey 
+                                    : (isComplete ? Colors.white : const Color(0xFFB8860B)),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],

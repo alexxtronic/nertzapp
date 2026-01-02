@@ -12,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../state/game_provider.dart';
 import '../../services/supabase_service.dart';
+import '../../services/friend_service.dart';
 import '../theme/game_theme.dart';
 import 'game_screen.dart';
 
@@ -24,12 +25,39 @@ class FriendsTab extends ConsumerStatefulWidget {
 
 class _FriendsTabState extends ConsumerState<FriendsTab> {
   final _joinCodeController = TextEditingController();
+  final _addFriendController = TextEditingController(); // Added
   final _supabase = Supabase.instance.client;
   bool _isLoading = false;
+  
+  // Real friends data
+  List<Friend> _friends = [];
+  bool _isLoadingFriends = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadFriends();
+  }
+
+  Future<void> _loadFriends() async {
+    if (!mounted) return;
+    setState(() => _isLoadingFriends = true);
+    
+    final friends = await FriendService().getFriends();
+    
+    if (mounted) {
+      setState(() {
+        _friends = friends;
+        _isLoadingFriends = false;
+      });
+    }
+  }
+
+  @override
   @override
   void dispose() {
     _joinCodeController.dispose();
+    _addFriendController.dispose(); // Added
     super.dispose();
   }
 
@@ -171,15 +199,7 @@ class _FriendsTabState extends ConsumerState<FriendsTab> {
             children: [
               const Text('FRIENDS', style: GameTheme.label),
               TextButton.icon(
-                onPressed: () {
-                  // TODO: Implement add friend
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Add Friend coming soon! 👋'),
-                      backgroundColor: GameTheme.primary,
-                    ),
-                  );
-                },
+                onPressed: _showAddFriendDialog, // Changed to real function
                 icon: const Icon(Icons.person_add, size: 18),
                 label: const Text('Add'),
               ),
@@ -187,43 +207,211 @@ class _FriendsTabState extends ConsumerState<FriendsTab> {
           ),
           const SizedBox(height: 12),
           
-          // Friends list placeholder
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: GameTheme.glassBorder),
+          // Friends List
+          _isLoadingFriends
+              ? const Center(child: CircularProgressIndicator())
+              : _friends.isEmpty
+                  ? _buildEmptyFriendsState()
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _friends.length,
+                      itemBuilder: (context, index) {
+                        final friend = _friends[index];
+                        return _buildFriendItem(friend);
+                      },
+                    ),
+          
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyFriendsState() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: GameTheme.glassBorder),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.group_outlined,
+            size: 48,
+            color: GameTheme.textSecondary.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No friends yet',
+            style: TextStyle(
+              color: GameTheme.textSecondary.withValues(alpha: 0.7),
+              fontSize: 16,
             ),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.group_outlined,
-                  size: 48,
-                  color: GameTheme.textSecondary.withOpacity(0.5),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'No friends yet',
-                  style: TextStyle(
-                    color: GameTheme.textSecondary.withOpacity(0.7),
-                    fontSize: 16,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Add friends to challenge them!',
+            style: TextStyle(
+              color: GameTheme.textSecondary.withValues(alpha: 0.5),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFriendItem(Friend friend) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: GameTheme.softShadow,
+      ),
+      child: Row(
+        children: [
+          Stack(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundImage: friend.avatarUrl != null 
+                    ? NetworkImage(friend.avatarUrl!) 
+                    : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+              ),
+              if (friend.isOnline)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  'Add friends to challenge them!',
+                  friend.odername,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: GameTheme.textPrimary,
+                  ),
+                ),
+                Text(
+                  friend.isOnline ? 'Online' : 'Offline',
                   style: TextStyle(
-                    color: GameTheme.textSecondary.withOpacity(0.5),
-                    fontSize: 13,
+                    fontSize: 12,
+                    color: friend.isOnline ? Colors.green : GameTheme.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          
-          const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: () {
+              // Create lobby and invite
+              _createLobby();
+              // In future: auto-send invite
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: GameTheme.accent,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Challenge'),
+          ),
         ],
+      ),
+    );
+  }
+
+  void _showAddFriendDialog() {
+    _addFriendController.clear();
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 320,
+          padding: const EdgeInsets.all(24),
+          decoration: GameTheme.glassDecoration,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Add Friend 👋", style: GameTheme.h2),
+              const SizedBox(height: 16),
+              const Text(
+                "Enter their username to send a request",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: GameTheme.textSecondary),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _addFriendController,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  prefixIcon: Icon(Icons.person_search),
+                  filled: true,
+                  fillColor: Colors.white54,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    child: const Text("Cancel"),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final username = _addFriendController.text.trim();
+                      if (username.isEmpty) return;
+                      
+                      Navigator.pop(ctx);
+                      
+                      try {
+                        await FriendService().sendFriendRequest(username);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Friend request sent!'), backgroundColor: Colors.green),
+                          );
+                        }
+                      } catch (e) {
+                         if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: GameTheme.primary,
+                    ),
+                    child: const Text("Send"),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

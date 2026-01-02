@@ -20,8 +20,9 @@ import '../../services/economy_service.dart';
 import '../theme/game_theme.dart';
 import '../widgets/game_board.dart';
 import 'results_screen.dart';
-import 'lobby_screen.dart';
+
 import '../widgets/lobby_overlay.dart';
+import 'main_navigation_screen.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key});
@@ -395,7 +396,7 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
               ref.read(gameStateProvider.notifier).reset();
               Navigator.of(context).pushAndRemoveUntil(
                 PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
+                  pageBuilder: (context, animation, secondaryAnimation) => const MainNavigationScreen(),
                   transitionsBuilder: (context, animation, secondaryAnimation, child) {
                     return FadeTransition(
                       opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
@@ -696,7 +697,7 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
                   ref.read(gameStateProvider.notifier).reset();
                   Navigator.of(context).pushAndRemoveUntil(
                     PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
+                      pageBuilder: (context, animation, secondaryAnimation) => const MainNavigationScreen(),
                       transitionsBuilder: (context, animation, secondaryAnimation, child) {
                         return FadeTransition(
                           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
@@ -721,7 +722,7 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
                   ref.read(gameStateProvider.notifier).reset();
                   Navigator.of(context).pushAndRemoveUntil(
                     PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
+                      pageBuilder: (context, animation, secondaryAnimation) => const MainNavigationScreen(),
                       transitionsBuilder: (context, animation, secondaryAnimation, child) {
                         return FadeTransition(
                           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
