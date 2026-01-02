@@ -85,22 +85,15 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Dark background while loading
-      body: SizedBox.expand(
+      backgroundColor: Colors.white, // White background
+      body: Center(
         child: _initialized
-            ? FittedBox(
-                // cover ensures it fills the screen (zooming/cropping if needed)
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _controller.value.size.width,
-                  height: _controller.value.size.height,
-                  child: VideoPlayer(_controller),
-                ),
+            ? AspectRatio(
+                // Preserve original video aspect ratio (horizontal video)
+                aspectRatio: _controller.value.aspectRatio,
+                child: VideoPlayer(_controller),
               )
-            : const Center(
-                // Loading indicator if valid init takes time, usually instantaneous for local assets
-                child: SizedBox(), 
-              ),
+            : const SizedBox(), // Empty while loading
       ),
     );
   }

@@ -71,6 +71,7 @@ flutter:
   assets:
     - assets/app_icon.png
     - assets/trophies/
+    - assets/ranked_trophies/
     - assets/nertz_button.png
     - assets/nertz_vid.mp4
     - assets/card_back.png

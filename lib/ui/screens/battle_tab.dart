@@ -199,18 +199,27 @@ class _BattleTabState extends ConsumerState<BattleTab> {
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
-                    // Trophy Icon
+                    // Trophy Image (rank-specific) in white box with colored border
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: rankColor.withOpacity(0.1),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: rankColor, width: 2),
+                        border: Border.all(color: rankColor, width: 2.5),
                       ),
-                      child: Icon(
-                        Icons.emoji_events_rounded,
-                        color: rankColor,
-                        size: 32,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          'assets/ranked_trophies/${currentTier.toLowerCase()}.png',
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.emoji_events_rounded,
+                            color: rankColor,
+                            size: 40,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),

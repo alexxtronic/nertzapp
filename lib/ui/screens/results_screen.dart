@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/game_provider.dart';
 import '../theme/game_theme.dart';
-import 'lobby_screen.dart';
+import 'main_navigation_screen.dart';
 import 'game_screen.dart';
 
 import 'package:nertz_royale/services/audio_service.dart';
@@ -387,7 +387,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                 ref.read(gameStateProvider.notifier).reset();
                 Navigator.of(context).pushAndRemoveUntil(
                   PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) => const LobbyScreen(),
+                    pageBuilder: (context, animation, secondaryAnimation) => const MainNavigationScreen(),
                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                       return FadeTransition(
                         opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
