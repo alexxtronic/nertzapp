@@ -296,15 +296,21 @@ class MatchmakingService {
   Future<void> reportRankedMatchResult({
     required int placement, // 1, 2, 3, or 4
     required int totalPoints, // Score from the game
+    int? bonusOverride, // Optional override (e.g. 25 for default win)
   }) async {
     if (_currentUserId == null) return;
     
     // Calculate bonus based on placement
     int bonus = 0;
-    if (placement == 1) {
-      bonus = 50;
-    } else if (placement == 2) {
-      bonus = 25;
+    
+    if (bonusOverride != null) {
+      bonus = bonusOverride;
+    } else {
+      if (placement == 1) {
+        bonus = 50;
+      } else if (placement == 2) {
+        bonus = 25;
+      }
     }
     // 3rd and 4th get no bonus
     
@@ -320,6 +326,23 @@ class MatchmakingService {
       debugPrint('🏆 Ranked result: ${placement}${_getOrdinal(placement)} place, +$pointsChange points (base: $totalPoints, bonus: $bonus)');
     } catch (e) {
       debugPrint('Error reporting ranked result: $e');
+    }
+  }
+
+  /// Deduct points for leaving a ranked game early
+  Future<void> reportRankedPenalty(int penaltyPoints) async {
+    if (_currentUserId == null) return;
+    
+    try {
+      // Use negative change
+      await _supabase.rpc('update_ranked_result', params: {
+        'p_user_id': _currentUserId,
+        'p_points_change': -penaltyPoints, // e.g. -20
+        'p_is_win': false,
+      });
+      debugPrint('📉 Ranked penalty applied: -$penaltyPoints points');
+    } catch (e) {
+       debugPrint('Error reporting ranked penalty: $e');
     }
   }
   

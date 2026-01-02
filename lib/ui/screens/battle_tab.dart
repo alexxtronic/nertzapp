@@ -16,6 +16,7 @@ import '../../services/supabase_service.dart';
 import '../theme/game_theme.dart';
 import '../widgets/bot_difficulty_dialog.dart';
 import '../widgets/quick_match_overlay.dart'; // Added
+import '../widgets/bounceable.dart';
 import 'game_screen.dart';
 import 'main_navigation_screen.dart';
 
@@ -91,11 +92,67 @@ class _BattleTabState extends ConsumerState<BattleTab> {
 
   @override
   Widget build(BuildContext context) {
-    final rankedPoints = (_profile?['ranked_points'] as int?) ?? 1000;
-    // Calculate simple tier for display (1000 base, +500 per tier)
-    // This is purely visual for the home screen card
-    final tierProgress = ((rankedPoints % 500) / 500).clamp(0.0, 1.0);
+    // Tier Logic Helpers
+    String getTierName(int points) {
+      if (points < 500) return 'Bronze';
+      if (points < 1000) return 'Silver';
+      if (points < 2500) return 'Gold';
+      if (points < 5000) return 'Platinum';
+      if (points < 7500) return 'Master';
+      return 'Legend';
+    }
+
+    Color getRankColor(int points) {
+      if (points < 500) return const Color(0xFFCD7F32);
+      if (points < 1000) return const Color(0xFFC0C0C0);
+      if (points < 2500) return const Color(0xFFFFD700);
+      if (points < 5000) return const Color(0xFFE5E4E2);
+      if (points < 7500) return Colors.deepPurpleAccent;
+      return Colors.redAccent;
+    }
+
+    int getTierStart(int points) {
+      if (points < 500) return 0;
+      if (points < 1000) return 500;
+      if (points < 2500) return 1000;
+      if (points < 5000) return 2500;
+      if (points < 7500) return 5000;
+      return 7500;
+    }
     
+    int getNextTierStart(int points) {
+      if (points < 500) return 500;
+      if (points < 1000) return 1000;
+      if (points < 2500) return 2500;
+      if (points < 5000) return 5000;
+      if (points < 7500) return 7500;
+      return 100000; 
+    }
+
+    String getSubTier(int points) {
+      if (points >= 7500) return '';
+      final start = getTierStart(points);
+      final end = getNextTierStart(points);
+      final step = (end - start) / 5;
+      final offset = points - start;
+      if (offset < step) return 'V';
+      if (offset < step * 2) return 'IV';
+      if (offset < step * 3) return 'III';
+      if (offset < step * 4) return 'II';
+      return 'I';
+    }
+
+    final rankedPoints = (_profile?['ranked_points'] as int?) ?? 0; // Fixed: Defined variable
+    final currentTier = getTierName(rankedPoints);
+
+    final subTier = getSubTier(rankedPoints);
+    final rankFullName = '$currentTier $subTier'.trim();
+    final rankColor = getRankColor(rankedPoints);
+    
+    final startThreshold = getTierStart(rankedPoints);
+    final endThreshold = getNextTierStart(rankedPoints);
+    final tierProgress = (rankedPoints - startThreshold) / (endThreshold - startThreshold);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -106,109 +163,99 @@ class _BattleTabState extends ConsumerState<BattleTab> {
             alignment: Alignment.center,
             child: Container(
               margin: const EdgeInsets.only(bottom: 24, top: 16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Image.asset(
-                  'assets/splash_hero.png',
-                  height: 160,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const SizedBox(height: 120),
-                ),
+              child: Image.asset(
+                'assets/logo_3d.png',
+                height: 160,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox(height: 120),
               ),
             ),
           ),
 
-          // Ranked Points Card (Burst Design)
+          // Ranked Points Card (New Design)
           Container(
             margin: const EdgeInsets.only(bottom: 24),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFFF512F), Color(0xFFDD2476)], // Red-Orange burst
+                colors: [Colors.redAccent, Colors.orangeAccent],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+              borderRadius: BorderRadius.circular(26),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFF512F).withOpacity(0.4),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
+                  color: Colors.redAccent.withOpacity(0.4),
+                  blurRadius: 15,
+                  spreadRadius: 2,
                 ),
               ],
             ),
-            child: Stack(
-              children: [
-                // Background Pattern (subtle circles)
-                Positioned(
-                  right: -20,
-                  top: -20,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+            padding: const EdgeInsets.all(2), // 2px Border
+            child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Row(
-                    children: [
-                      // Trophy
-                      Image.asset('assets/trophies/gold.png', width: 64, height: 64, 
-                          errorBuilder: (_,__,___) => const Icon(Icons.emoji_events, size: 60, color: Colors.white)),
-                      const SizedBox(width: 20),
-                      
-                      // Stats
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'RANKED RATING',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$rankedPoints',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w900,
-                                height: 1.0,
-                                shadows: [
-                                  Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            // Progress Bar
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: tierProgress,
-                                backgroundColor: Colors.black12,
-                                valueColor: const AlwaysStoppedAnimation(Colors.white),
-                                minHeight: 6,
-                              ),
-                            ),
-                          ],
-                        ),
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    // Trophy Icon
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: rankColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: rankColor, width: 2),
                       ),
-                    ],
-                  ),
+                      child: Icon(
+                        Icons.emoji_events_rounded,
+                        color: rankColor,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Check if we need to show stats
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'RANKED RATING: ${rankFullName.toUpperCase()}',
+                            style: TextStyle(
+                              color: GameTheme.textSecondary.withOpacity(0.8),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$rankedPoints',
+                            style: const TextStyle(
+                              color: Colors.black, // Dark text on white
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Progress Bar
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: tierProgress,
+                              backgroundColor: Colors.grey.withOpacity(0.2),
+                              valueColor: const AlwaysStoppedAnimation(Colors.orangeAccent),
+                              minHeight: 6,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
             ),
           ),
+
 
           // Ranked Quick Match Button
           _buildGameButton(
@@ -283,89 +330,85 @@ class _BattleTabState extends ConsumerState<BattleTab> {
     String? badge,
     Widget? trailing,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: (gradient as LinearGradient).colors.first.withOpacity(0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
+    return Bounceable(
+      onTap: onPressed,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: gradient,
           borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 28),
+          boxShadow: [
+            BoxShadow(
+              color: (gradient as LinearGradient).colors.first.withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                child: Icon(icon, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (badge != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              badge,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                          if (badge != null) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.25),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                badge,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
                         ],
+                      ],
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 13,
                       ),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                if (trailing != null) trailing,
-                if (trailing == null)
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white.withOpacity(0.7),
-                    size: 18,
-                  ),
-              ],
-            ),
+              ),
+              if (trailing != null) trailing,
+              if (trailing == null)
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white.withOpacity(0.7),
+                  size: 18,
+                ),
+            ],
           ),
         ),
       ),

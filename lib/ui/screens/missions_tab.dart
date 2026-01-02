@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/game_theme.dart';
 import '../../services/mission_service.dart';
 import '../widgets/currency_display.dart'; // For reward animation
+import '../widgets/bounceable.dart';
 
 // Mission model removed - using UserMission from service
 
@@ -239,46 +240,42 @@ class _MissionCard extends StatelessWidget {
             // Reward / Claim button
             Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isClaimed 
-                        ? Colors.grey.withOpacity(0.2)
-                        : isComplete 
-                            ? GameTheme.success 
-                            : const Color(0xFFFFD700).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: isComplete && !isClaimed ? onClaim : null,
+                Bounceable(
+                  onTap: isComplete && !isClaimed ? onClaim : null,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isClaimed 
+                          ? Colors.grey.withOpacity(0.2)
+                          : isComplete 
+                              ? GameTheme.success 
+                              : const Color(0xFFFFD700).withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isClaimed ? Icons.check_circle : (isComplete ? Icons.check : Icons.monetization_on),
-                              size: 16,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isClaimed ? Icons.check_circle : (isComplete ? Icons.check : Icons.monetization_on),
+                            size: 16,
+                            color: isClaimed 
+                                ? Colors.grey 
+                                : (isComplete ? Colors.white : const Color(0xFFFFD700)),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isClaimed ? 'Done' : (isComplete ? 'Claim' : '+${mission.rewardCoins}'),
+                            style: TextStyle(
                               color: isClaimed 
                                   ? Colors.grey 
-                                  : (isComplete ? Colors.white : const Color(0xFFFFD700)),
+                                  : (isComplete ? Colors.white : const Color(0xFFB8860B)),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              isClaimed ? 'Done' : (isComplete ? 'Claim' : '+${mission.rewardCoins}'),
-                              style: TextStyle(
-                                color: isClaimed 
-                                    ? Colors.grey 
-                                    : (isComplete ? Colors.white : const Color(0xFFB8860B)),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

@@ -7,7 +7,9 @@
 /// 4. Friends - Friend list and match creation
 /// 5. Profile - User stats and settings
 
+import 'dart:async';
 import 'package:flutter/material.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,6 +22,10 @@ import '../../services/supabase_service.dart'; // Fixed import
 import '../theme/game_theme.dart';
 import '../widgets/currency_display.dart';
 import 'gem_shop_screen.dart';
+import 'game_screen.dart'; // Added
+import '../../services/friend_service.dart'; // Added
+import '../../state/game_provider.dart'; // Added
+import '../widgets/bounceable.dart';
 
 /// Provider to track current tab index
 final currentTabProvider = StateProvider<int>((ref) => 2); // Default to Battle tab
@@ -43,6 +49,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   void initState() {
     super.initState();
     _loadProfile(); // Fetch profile
+    _initSocialRecievers(); // Listen for invites
     
     _screens = [
       const MissionsTab(),
@@ -74,7 +81,51 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   @override
   void dispose() {
     _glassAnimationController.dispose();
+    _inviteSubscription?.cancel();
     super.dispose();
+  }
+
+  // Social
+  StreamSubscription? _inviteSubscription;
+  
+  void _initSocialRecievers() {
+    // 1. Init Realtime
+    FriendService().initializeRealtime();
+    
+    // 2. Listen for Invites
+    _inviteSubscription = FriendService().onInviteReceived.listen((event) {
+       if (!mounted) return;
+       // Show Invite Dialog
+       showDialog(
+         context: context,
+         builder: (ctx) => AlertDialog(
+           backgroundColor: Colors.white,
+           title: Text("Game Invite! 🎮", style: GameTheme.h2.copyWith(color: Colors.black)),
+           content: Text("${event.senderName} invited you to play Nertz Royale!", style: const TextStyle(color: Colors.black87)),
+           actions: [
+             TextButton(
+               child: const Text("Decline", style: TextStyle(color: Colors.grey)),
+               onPressed: () => Navigator.pop(ctx),
+             ),
+             ElevatedButton(
+               style: ElevatedButton.styleFrom(backgroundColor: GameTheme.primary),
+               child: const Text("Accept"),
+               onPressed: () {
+                 Navigator.pop(ctx);
+                 _acceptInvite(event.matchCode);
+               },
+             ),
+           ],
+         ),
+       );
+    });
+  }
+
+  void _acceptInvite(String code) {
+    ref.read(gameStateProvider.notifier).joinGame(code);
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const GameScreen()),
+    );
   }
   
   void _onTabTapped(int index) {
@@ -138,7 +189,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           // Currency (Tappable)
-          GestureDetector(
+          Bounceable(
             onTap: () {
               Navigator.push(
                 context,
@@ -151,7 +202,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
           const SizedBox(width: 12), // Spacing
           
           // Profile Icon (Tappable) - Leads to Profile Tab (Index 4)
-          GestureDetector(
+          Bounceable(
             onTap: () => _onTabTapped(4),
             child: Container(
               width: 44,
@@ -218,9 +269,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   Widget _buildNavItem(int index, IconData icon, String label, int currentIndex, {bool isCenter = false}) {
     final isSelected = index == currentIndex;
     
-    return GestureDetector(
+    return Bounceable(
       onTap: () => _onTabTapped(index),
-      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,

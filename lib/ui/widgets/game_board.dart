@@ -107,8 +107,46 @@ class GlassCard extends StatelessWidget {
       );
     }
 
+    if (compact) {
+      // Super compact mode for stacked work piles
+      // "shrink and move far to the top"
+      return Stack(
+        children: [
+          Positioned(
+            top: 1, // "far to the top"
+            left: 2,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  card.rank.symbol,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13, // Slightly smaller to ensure fit
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'SF Pro Rounded',
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(width: 2), // Slightly more separation
+                Text(
+                  card.suit.symbol,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13,
+                    height: 1.0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Clean look - no bottom stats in compact mode to reduce noise
+        ],
+      );
+    }
+
     return Padding(
-      padding: EdgeInsets.all(compact ? 4 : 6),
+      padding: const EdgeInsets.all(6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -116,7 +154,7 @@ class GlassCard extends StatelessWidget {
             card.rank.symbol,
             style: TextStyle(
               color: color,
-              fontSize: compact ? 12 : 14,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               fontFamily: 'SF Pro Rounded',
               height: 1.0,
@@ -126,7 +164,7 @@ class GlassCard extends StatelessWidget {
             card.suit.symbol,
             style: TextStyle(
               color: color,
-              fontSize: compact ? 10 : 12,
+              fontSize: 12,
               height: 1.0,
             ),
           ),
@@ -142,7 +180,7 @@ class GlassCard extends StatelessWidget {
                     card.rank.symbol,
                     style: TextStyle(
                       color: color,
-                      fontSize: compact ? 12 : 14,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'SF Pro Rounded',
                       height: 1.0,
@@ -152,7 +190,7 @@ class GlassCard extends StatelessWidget {
                     card.suit.symbol,
                     style: TextStyle(
                       color: color,
-                      fontSize: compact ? 10 : 12,
+                      fontSize: 12,
                       height: 1.0,
                     ),
                   ),
@@ -1366,27 +1404,25 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     }
     
     // FIXED LAYOUT: Height is constant regardless of pile size.
-    // This ensures the player hand area NEVER moves.
     final int count = pile.length;
-    final bool isLarge = count > 5;
+    // User requested "shrink when there are more than 2 cards"
+    final bool isLarge = count > 2; 
     
-    // FIXED height - never grows beyond this
+    // FIXED height
     const double maxPileHeight = GameTheme.cardHeight * 1.4;
     
-    // Reserve minimum 15px peek for the FIRST card (top of pile visually)
-    const double firstCardPeek = 15.0;
+    // Standard peek for the rest of the stack (don't push them down)
+    const double standardPeek = 15.0; 
     
-    // Calculate offset for remaining cards after reserving first card peek
+    // Calculate offset for remaining cards
     double baseOffset;
     if (count <= 1) {
       baseOffset = 20.0;
     } else if (count == 2) {
-      baseOffset = firstCardPeek; // Just the peek space
+      baseOffset = standardPeek; 
     } else {
-      // Distribute remaining height among cards 1 to N-1
-      // First card gets firstCardPeek, remaining cards share the rest
-      final remainingHeight = maxPileHeight - GameTheme.cardHeight - firstCardPeek;
-      baseOffset = (remainingHeight / (count - 2)).clamp(5.0, 20.0);
+      final remainingHeight = maxPileHeight - GameTheme.cardHeight - standardPeek;
+      baseOffset = (remainingHeight / (count - 2)).clamp(5.0, 25.0);
     }
     
     return SizedBox(
@@ -1407,15 +1443,33 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
              }
           }
           
+          // Compact Logic Refined:
+          // "starting card also does the shrunk suit rank"
+          // Only the LATEST card (Playable) remains Normal.
+          // All underlying cards (First + Middle) are Compact.
+          bool isCompact = false;
+          if (isLarge) {
+             // Index count-1 is Latest (Playable) - Normal
+             // All others (0 to count-2) are Compact
+             if (index < count - 1) {
+               isCompact = true;
+             }
+          }
+          
           final childWidget = GlassCard(
             card: card, 
-            compact: isLarge, // Shrink icons if pile is large (6+)
+            compact: isCompact, 
           );
 
-          // First card always at 0, subsequent cards offset
-          final double topPos = index == 0 
-              ? 0.0 
-              : firstCardPeek + (index - 1) * baseOffset;
+          // POKE UP LOGIC:
+          // Base card (Index 0) shifts up slightly to reveal its compact header.
+          double topPos;
+          if (index == 0) {
+            // User request: "move the starting card down a tiny bit more" (was -6.0)
+            topPos = isLarge ? -3.0 : 0.0;
+          } else {
+            topPos = standardPeek + (index - 1) * baseOffset;
+          }
 
           return Positioned(
             top: topPos,
@@ -1617,8 +1671,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
     final now = DateTime.now();
     // If no action yet (game just started), elapsed is 0 - button starts disabled
     final elapsed = lastAction != null ? now.difference(lastAction).inSeconds : 0;
-    final progress = (elapsed / 60.0).clamp(0.0, 1.0); // 0.0 to 1.0 over 60 seconds
-    final isAvailable = lastAction != null && elapsed >= 60;
+    final progress = (elapsed / 45.0).clamp(0.0, 1.0); // 0.0 to 1.0 over 45 seconds
+    final isAvailable = lastAction != null && elapsed >= 45;
     
     // Check if there are cards to shuffle
     final hasCards = !player.stockPile.isEmpty || !player.wastePile.isEmpty;
@@ -1631,8 +1685,8 @@ class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
         final currentTime = DateTime.now();
         // If no action yet, elapsed is 0 - button stays disabled until first action
         final elapsedNow = lastActionTime != null ? currentTime.difference(lastActionTime).inSeconds : 0;
-        final progressNow = (elapsedNow / 60.0).clamp(0.0, 1.0);
-        final available = lastActionTime != null && elapsedNow >= 60 && hasCards;
+        final progressNow = (elapsedNow / 45.0).clamp(0.0, 1.0);
+        final available = lastActionTime != null && elapsedNow >= 45 && hasCards;
         
         return GestureDetector(
           onTap: available ? widget.onShuffleDeck : null,

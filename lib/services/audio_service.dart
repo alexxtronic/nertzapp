@@ -59,18 +59,30 @@ class AudioService {
     }
   }
 
+  // Track current music to prevent restarts
+  String? _currentMusicPath;
+
   /// Start background music
   Future<void> startBackgroundMusic({String? path}) async {
     if (!_musicEnabled) return;
     
+    final source = path ?? 'audio/background.mp3';
+    
+    // Check if same music is already playing
+    if (_bgMusicPlayer.state == PlayerState.playing && _currentMusicPath == source) {
+      debugPrint('🎵 Music already playing: $source (Skipping restart)');
+      return;
+    }
+    
     try {
       await _bgMusicPlayer.stop();
-      final source = path ?? 'audio/background.mp3';
+      _currentMusicPath = source;
       await _bgMusicPlayer.setSource(AssetSource(source));
       await _bgMusicPlayer.resume();
       debugPrint('🎵 Background music started: $source');
     } catch (e) {
       debugPrint('Failed to start background music: $e');
+      _currentMusicPath = null; // Reset on tracking failure
     }
   }
 
@@ -78,6 +90,7 @@ class AudioService {
   Future<void> stopBackgroundMusic() async {
     try {
       await _bgMusicPlayer.stop();
+      _currentMusicPath = null;
       debugPrint('🎵 Background music stopped');
     } catch (e) {
       debugPrint('Failed to stop background music: $e');

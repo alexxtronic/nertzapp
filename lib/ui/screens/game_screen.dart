@@ -391,51 +391,61 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
     );
   }
 
-  void _confirmQuit() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: GameTheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text(
-          'Quit Game?',
-          style: TextStyle(color: GameTheme.textPrimary),
-        ),
-        content: const Text(
-          'Your progress will be lost.',
-          style: TextStyle(color: GameTheme.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () {
-              ref.read(gameStateProvider.notifier).reset();
-              Navigator.of(context).pushAndRemoveUntil(
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => const MainNavigationScreen(),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(
-                      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                      child: child,
-                    );
-                  },
-                  transitionDuration: const Duration(milliseconds: 300),
-                ),
-                (route) => false,
-              );
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: GameTheme.error,
-            ),
-            child: const Text('QUIT'),
-          ),
-        ],
+  void _confirmQuit() async {
+    final gameState = ref.read(gameStateProvider);
+    final client = ref.read(gameClientProvider);
+    
+    // Check for Leaver Penalty (Ranked + Playing)
+    if (gameState != null && 
+        gameState.isRanked && 
+        gameState.phase == GamePhase.playing) {
+          
+      // Report penalty (-20 RP)
+      // We don't await this to block UI, just fire and forget if needed, 
+      // but waiting ensures it sends before disconnect involves closing socket.
+      // Actually, standard is to await.
+      
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => const Center(child: CircularProgressIndicator()),
+      );
+      
+      try {
+        await MatchmakingService().reportRankedPenalty(20);
+        // Send Leave Message to others (so they can trigger Default Win if last)
+        client.leaveMatch(gameState.matchId);
+        // Wait briefly for message to flush
+        await Future.delayed(const Duration(milliseconds: 500));
+      } catch (e) {
+        debugPrint('Error during quit sequence: $e');
+      } finally {
+        if (mounted) Navigator.pop(context); // Close loading
+      }
+    } else {
+      // Non-ranked or not playing - just leave friendly
+      if (gameState != null) {
+         client.leaveMatch(gameState.matchId);
+      }
+    }
+
+    if (!mounted) return;
+    
+    Navigator.pop(context); // Close dialog
+
+    ref.read(gameStateProvider.notifier).reset();
+    Navigator.of(context).pushAndRemoveUntil(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const MainNavigationScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
       ),
+      (route) => false,
     );
   }
 

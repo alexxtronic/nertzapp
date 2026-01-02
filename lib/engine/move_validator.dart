@@ -111,11 +111,11 @@ class MoveValidator {
   }
 
   static MoveResult _validateShuffleDeck(Move move, PlayerState player) {
-    // Check if 60 seconds have passed since last playable action
+    // Check if 45 seconds have passed since last playable action
     if (player.lastPlayableActionTime != null) {
       final elapsed = DateTime.now().difference(player.lastPlayableActionTime!);
-      if (elapsed.inSeconds < 60) {
-        return MoveResult.invalid(move, 'Must wait ${60 - elapsed.inSeconds} more seconds');
+      if (elapsed.inSeconds < 45) {
+        return MoveResult.invalid(move, 'Must wait ${45 - elapsed.inSeconds} more seconds');
       }
     }
     // Check if there are cards to shuffle

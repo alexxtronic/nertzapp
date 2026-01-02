@@ -12,6 +12,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import '../theme/game_theme.dart';
 import '../widgets/currency_display.dart';
 import '../../services/iap_service.dart';
+import '../widgets/bounceable.dart';
 
 class GemShopScreen extends ConsumerStatefulWidget {
   const GemShopScreen({super.key});
@@ -222,187 +223,179 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
 
     if (isGem) {
       // Grid Card Style (Unchanged mostly, just amounts)
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: popular ? color : GameTheme.glassBorder,
-            width: popular ? 2 : 1,
-          ),
-          boxShadow: GameTheme.softShadow,
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
+      return Bounceable(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  if (popular)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'POPULAR',
-                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  const Spacer(),
-                  Icon(
-                    Icons.diamond,
-                    size: 36,
-                    color: color,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '$gemAmount',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: GameTheme.textPrimary,
-                    ),
-                  ),
-                  if (bonus) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: GameTheme.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        '+BONUS',
-                        style: TextStyle(color: GameTheme.success, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                  const Spacer(),
+            border: Border.all(
+              color: popular ? color : GameTheme.glassBorder,
+              width: popular ? 2 : 1,
+            ),
+            boxShadow: GameTheme.softShadow,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                if (popular)
                   Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: GameTheme.primary,
-                      borderRadius: BorderRadius.circular(20),
+                      color: color,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(
-                      product.price,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: const Text(
+                      'POPULAR',
+                      style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                const Spacer(),
+                Icon(
+                  Icons.diamond,
+                  size: 36,
+                  color: color,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$gemAmount',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: GameTheme.textPrimary,
+                  ),
+                ),
+                if (bonus) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: GameTheme.success.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      '+BONUS',
+                      style: TextStyle(color: GameTheme.success, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
-              ),
+                const Spacer(),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: GameTheme.primary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    product.price,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       );
     } else {
       // List Tile Style (Bundle) - FIX OVERLAP HERE
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: bestValue ? color : GameTheme.glassBorder,
-            width: bestValue ? 2 : 1,
-          ),
-          boxShadow: GameTheme.softShadow,
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
+      return Bounceable(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.card_giftcard, color: color, size: 28),
+            border: Border.all(
+              color: bestValue ? color : GameTheme.glassBorder,
+              width: bestValue ? 2 : 1,
+            ),
+            boxShadow: GameTheme.softShadow,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 14),
-                  
-                  // Expanded Section for Title/Desc
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Row for Title + Badge
-                        Wrap( // Use Wrap instead of Row to handle overflow gracefully if really needed, or just Row
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          children: [
-                            Text(
-                              product.title.replaceAll(RegExp(r'\(.*\)'), '').trim(), // Clean title
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: GameTheme.textPrimary,
+                  child: Icon(Icons.card_giftcard, color: color, size: 28),
+                ),
+                const SizedBox(width: 14),
+                
+                // Expanded Section for Title/Desc
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Row for Title + Badge
+                      Wrap( // Use Wrap instead of Row to handle overflow gracefully if really needed, or just Row
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        children: [
+                          Text(
+                            product.title.replaceAll(RegExp(r'\(.*\)'), '').trim(), // Clean title
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: GameTheme.textPrimary,
+                            ),
+                          ),
+                          if (bestValue)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'BEST VALUE',
+                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                               ),
                             ),
-                            if (bestValue)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  'BEST VALUE',
-                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        // Custom Bundle Description based on our logic
-                        Text(
-                          '$coinAmount Coins + $gemAmount Gems',
-                          style: const TextStyle(
-                            color: GameTheme.textSecondary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Price Button
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Smaller padding
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      product.price,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13, // Smaller font size as requested
+                        ],
                       ),
+                      const SizedBox(height: 4),
+                      // Custom Bundle Description based on our logic
+                      Text(
+                        '$coinAmount Coins + $gemAmount Gems',
+                        style: const TextStyle(
+                          color: GameTheme.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Price Button
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Smaller padding
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    product.price,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13, // Smaller font size as requested
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

@@ -161,7 +161,7 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
           final avatars = List<String?>.from(status['avatars'] ?? []);
           final votes = List<bool>.from(status['hasVoted'] ?? []);
           final voteCount = status['votes'] as int? ?? 0;
-          final totalCount = status['total'] as int? ?? 0;
+          final totalCount = avatars.length; // Use actual list length for reliability
 
           setState(() {
             _foundAvatars = avatars;
@@ -177,11 +177,20 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
             return; // Exit poll callback
           }
           
-          // MAJORITY VOTE: 2-3 players need majority to start countdown
-          // 2 players: 2/2 needed (both)
-          // 3 players: 2/3 needed
-          final majorityThreshold = (totalCount / 2).ceil();
-          final hasMajority = voteCount >= majorityThreshold && totalCount >= 2;
+          // MAJORITY VOTE ADJUSTED:
+          // 2 players: 2 votes needed (Unanimous 2/2) -- "never 1/2"
+          // 3 players: 2 votes needed (Majority 2/3)
+          // 4 players: Auto-starts above
+          
+          int votesNeeded;
+          if (totalCount == 2) {
+             votesNeeded = 2; // Strict 2/2
+          } else {
+             // For 3 players, ceil(3/2) = 2.
+             votesNeeded = (totalCount / 2).ceil(); 
+          }
+          
+          final hasMajority = voteCount >= votesNeeded && totalCount >= 2;
           
           if (hasMajority) {
              _startCountdown();
@@ -190,7 +199,7 @@ class _QuickMatchOverlayState extends ConsumerState<QuickMatchOverlay> {
              if (_isCountdownActive) {
                 _cancelCountdown();
              } else {
-                setState(() => _statusMessage = "Waiting for votes ($voteCount/$totalCount)...");
+                setState(() => _statusMessage = "Waiting for votes ($voteCount/${votesNeeded} needed)...");
              }
           }
         }

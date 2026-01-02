@@ -6,6 +6,7 @@
 /// - Challenge friends to games
 
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Friend relationship status
@@ -50,6 +51,19 @@ class Friend {
   }
 }
 
+/// Invite Event Model
+class InviteEvent {
+  final String senderId;
+  final String senderName;
+  final String matchCode;
+  
+  InviteEvent({
+    required this.senderId, 
+    required this.senderName, 
+    required this.matchCode
+  });
+}
+
 class FriendService {
   static final FriendService _instance = FriendService._internal();
   factory FriendService() => _instance;
@@ -57,7 +71,124 @@ class FriendService {
 
   final _supabase = Supabase.instance.client;
   
+  // Realtime
+  RealtimeChannel? _presenceChannel;
+  RealtimeChannel? _inviteChannel;
+  
+  // Presence Data
+  final Set<String> _onlineUserIds = {};
+  Set<String> get onlineUserIds => _onlineUserIds;
+  
+  // Invite Stream
+  final _inviteController = StreamController<InviteEvent>.broadcast();
+  Stream<InviteEvent> get onInviteReceived => _inviteController.stream;
+  
+  // Presence Stream
+  final _presenceController = StreamController<void>.broadcast();
+  Stream<void> get onPresenceUpdate => _presenceController.stream;
+  
   String? get _currentUserId => _supabase.auth.currentUser?.id;
+
+  /// Initialize Presence and Invite Listeners
+  Future<void> initializeRealtime() async {
+    if (_currentUserId == null) return;
+    
+    // 1. Presence (Track who is online)
+    _presenceChannel = _supabase.channel('online_users');
+    _presenceChannel!
+        .onPresenceSync((_) {
+          // Update local set of online users
+          final newState = _presenceChannel!.presenceState();
+          _onlineUserIds.clear();
+          
+          // newState is List<PresenceState> usually
+          for (var state in newState) {
+             final p = state as dynamic;
+             if (p.payload != null && p.payload['user_id'] != null) {
+                _onlineUserIds.add(p.payload['user_id'] as String);
+             }
+          }
+          _presenceController.add(null);
+        })
+        .onPresenceJoin((payload) {
+           if (payload.newPresences != null) {
+              for (var p in payload.newPresences!) {
+                  if (p.payload['user_id'] != null) _onlineUserIds.add(p.payload['user_id'] as String);
+              }
+           }
+           _presenceController.add(null);
+        })
+        .onPresenceLeave((payload) {
+           if (payload.leftPresences != null) {
+              for (var p in payload.leftPresences!) {
+                  if (p.payload['user_id'] != null) _onlineUserIds.remove(p.payload['user_id'] as String);
+              }
+           }
+           _presenceController.add(null);
+        })
+        .subscribe((status, error) async {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+             // Track myself
+             await _presenceChannel!.track({'user_id': _currentUserId, 'online_at': DateTime.now().toIso8601String()});
+          }
+        });
+
+    // 2. Invite Listener (Private channel)
+    // We listen on 'user_invites:MY_ID'
+    final myInviteChannel = 'user_invites:$_currentUserId';
+    _inviteChannel = _supabase.channel(myInviteChannel);
+    _inviteChannel!
+        .onBroadcast(event: 'game_invite', callback: (payload) {
+           // Received invite
+           debugPrint('📩 Invite received: $payload');
+           final senderId = payload['sender_id'];
+           final senderName = payload['sender_name'];
+           final code = payload['match_code'];
+           
+           if (code != null) {
+             _inviteController.add(InviteEvent(
+               senderId: senderId ?? 'Unknown',
+               senderName: senderName ?? 'A Friend',
+               matchCode: code,
+             ));
+           }
+        })
+        .subscribe();
+  }
+
+  /// Check if a user is online
+  bool isUserOnline(String userId) {
+    return _onlineUserIds.contains(userId);
+  }
+
+  /// Send Game Invite to Friend
+  Future<void> sendGameInvite(String friendId, String matchCode, String myUsername) async {
+     try {
+       // Send to 'user_invites:FRIEND_ID'
+       final targetChannel = 'user_invites:$friendId';
+       
+       final channel = _supabase.channel(targetChannel);
+       
+       await channel.subscribe((status, _) async {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+             await channel.sendBroadcastMessage(
+               event: 'game_invite',
+               payload: {
+                 'sender_id': _currentUserId,
+                 'sender_name': myUsername,
+                 'match_code': matchCode,
+               },
+             );
+             // Cleanup
+             Future.delayed(const Duration(seconds: 1), () => _supabase.removeChannel(channel));
+          }
+       });
+       
+       debugPrint('📨 Invite sent to $friendId');
+     } catch (e) {
+       debugPrint('Error sending invite: $e');
+     }
+  }
 
   /// Get all friends (accepted)
   Future<List<Friend>> getFriends() async {
@@ -160,12 +291,22 @@ class FriendService {
   /// Accept friend request
   Future<bool> acceptFriendRequest(String friendshipId) async {
     try {
-      await _supabase
+      debugPrint('🤝 Accepting friend request: $friendshipId');
+      
+      // Perform the update
+      final result = await _supabase
           .from('friends')
           .update({'status': 'accepted', 'updated_at': DateTime.now().toIso8601String()})
-          .eq('id', friendshipId);
+          .eq('id', friendshipId)
+          .select(); // Return updated rows to verify
       
-      debugPrint('✅ Friend request accepted');
+      // Check if update was successful
+      if (result.isEmpty) {
+        debugPrint('❌ No rows updated - RLS policy may be blocking or ID not found');
+        return false;
+      }
+      
+      debugPrint('✅ Friend request accepted: ${result.first}');
       return true;
     } catch (e) {
       debugPrint('Error accepting friend request: $e');

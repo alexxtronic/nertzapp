@@ -379,19 +379,28 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       if (state != null && message.move.playerId != playerId) {
         debugPrint('📨 Executing remote move from ${message.move.playerId}');
         try {
-          GameEngine.executeMove(message.move, state!);
+          final result = GameEngine.executeMove(message.move, state!);
           
+          // CRITICAL: Check if remote move ended the round
+          if (result.roundEnded && result.roundWinnerId != null) {
+            debugPrint('🏁 Remote move ended round! Winner: ${result.roundWinnerId}');
+            endRound(result.roundWinnerId!); 
+            // Note: endRound will recreate state
+          } else {
+             // If round didn't end, just rebuild state to notify listeners of card move
+             state = GameState.fromJson(state!.toJson());
+          }
+
           // Check for unanimous reset vote after remote vote (Host Only)
           if (message.move.type == MoveType.voteReset && 
               state!.hostId == playerId &&
+              state!.phase == GamePhase.playing && // Only reset if playing
               state!.hasUnanimousResetVote) {
             debugPrint('🔄 Unanimous vote from remote player! Resetting decks...');
             state!.executeReset();
             // Broadcast the new randomized state immediately
             client.send(StateSnapshotMessage(gameState: state!));
           }
-          
-          state = GameState.fromJson(state!.toJson()); // Rebuild
         } catch (e, stack) {
           debugPrint('⚠️ Error executing remote move: $e');
           debugPrint(stack.toString());
@@ -425,6 +434,27 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       if (state != null && state!.hostId == playerId) {
         debugPrint('📨 Responding with StateSnapshotMessage...');
         client.send(StateSnapshotMessage(gameState: state!));
+      }
+    } else if (message is LeaveMatchMessage) {
+      debugPrint('👋 Player ${message.playerId} left the match');
+      if (state != null) {
+        // Remove player from state
+        state!.removePlayer(message.playerId);
+        // Force update UI
+        state = GameState.fromJson(state!.toJson());
+        
+        // CHECK FOR DEFAULT WIN (Last Player Standing)
+        // If Ranked Game + Playing Phase + Only 1 player left
+        if (state!.isRanked && 
+            state!.phase == GamePhase.playing && 
+            state!.players.length == 1) {
+              
+           final survivorId = state!.players.keys.first;
+           debugPrint('🏆 Last Player Standing! Triggering Default Win for $survivorId');
+           
+           // End round immediately with default win flag
+           endRound(survivorId, isDefaultWin: true);
+        }
       }
     } else if (message is StartGameMessage) {
       debugPrint('📨 StartGameMessage received! Ensuring state sync...');
@@ -564,7 +594,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     }
   }
   
-  void endRound(String winnerId) {
+  void endRound(String winnerId, {bool isDefaultWin = false}) {
     if (state == null) return;
     
     // Mission Tracking
@@ -592,6 +622,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     
     // Sync state if host
     if (state!.hostId == client.playerId) {
+      debugPrint('📢 Host Broadcasting Round End State...');
+      client.send(StateSnapshotMessage(gameState: state!)); // FORCE sync
       client.updateState(state!);
     }
     
@@ -608,6 +640,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
        MatchmakingService().reportRankedMatchResult(
          placement: placement,
          totalPoints: playerState.scoreTotal,
+         bonusOverride: isDefaultWin ? 25 : null, // Default Win = +25 Override
        );
     }
   }

@@ -8,6 +8,7 @@ import '../../services/economy_service.dart';
 import '../../state/economy_provider.dart';
 import '../theme/game_theme.dart';
 import '../widgets/currency_display.dart';
+import '../widgets/bounceable.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -103,7 +104,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
   Widget _buildCategoryTab(String label, String categoryId, IconData icon) {
     final isSelected = _selectedCategory == categoryId;
-    return GestureDetector(
+    return Bounceable(
       onTap: () => setState(() => _selectedCategory = categoryId),
       child: Column(
         children: [
@@ -256,20 +257,22 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   child: Icon(Icons.check_circle, color: GameTheme.success),
                 )
               else
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GameTheme.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  ),
-                  onPressed: () => _handlePurchase(product, balance),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset('assets/coin_icon.png', width: 16, height: 16),
-                      const SizedBox(width: 4),
-                      Text('${product.priceCoins}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
+                Bounceable(
+                  onTap: () => _handlePurchase(product, balance),
+                  child: Container( // Replaced ElevatedButton with Container for consistency
+                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                     decoration: BoxDecoration(
+                        color: GameTheme.primary,
+                        borderRadius: BorderRadius.circular(8),
+                     ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset('assets/coin_icon.png', width: 16, height: 16),
+                        const SizedBox(width: 4),
+                        Text('${product.priceCoins}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      ],
+                    ),
                   ),
                 ),
             ],
@@ -742,7 +745,7 @@ class _CardBackItem extends StatelessWidget {
                       ),
                     ),
                   )
-                : GestureDetector(
+                : Bounceable(
                     onTap: canAfford ? onPurchase : null,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 6),

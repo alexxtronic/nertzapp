@@ -452,6 +452,15 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
       return 'Legend';
     }
 
+    Color getRankColor(int points) {
+      if (points < 500) return const Color(0xFFCD7F32); // Bronze
+      if (points < 1000) return const Color(0xFFC0C0C0); // Silver
+      if (points < 2500) return const Color(0xFFFFD700); // Gold
+      if (points < 5000) return const Color(0xFFE5E4E2); // Platinum
+      if (points < 7500) return Colors.deepPurpleAccent; // Master
+      return Colors.redAccent; // Legend
+    }
+
     int getTierStart(int points) {
       if (points < 500) return 0;
       if (points < 1000) return 500;
@@ -490,6 +499,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     final currentTier = getTierName(newPoints);
     final subTier = getSubTier(newPoints);
     final fullName = '$currentTier $subTier'.trim();
+    final rankColor = getRankColor(newPoints);
     
     final startThreshold = getTierStart(newPoints);
     final nextThreshold = getNextTierStart(newPoints);
@@ -498,81 +508,144 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     final oldProgress = (oldPoints - startThreshold) / totalRange;
     final progress = (newPoints - startThreshold) / totalRange;
     
-    final didRankUp = getTierName(oldPoints) != currentTier;
     final pointsGained = newPoints - oldPoints;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: GameTheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: didRankUp ? GameTheme.accent : Colors.transparent, width: 2),
-        boxShadow: didRankUp ? [
-          BoxShadow(color: GameTheme.accent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 2)
-        ] : null,
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                didRankUp ? 'TIER UP!' : 'RANK PROGRESS', 
-                style: TextStyle(
-                  color: didRankUp ? GameTheme.accent : GameTheme.textSecondary, 
-                  fontWeight: FontWeight.bold, 
-                  letterSpacing: 1.5
-                )
-              ),
-              Text(
-                '$newPoints RP ${pointsGained >= 0 ? "(+$pointsGained)" : ""}', 
-                style: const TextStyle(fontWeight: FontWeight.bold, color: GameTheme.textPrimary)
-              ),
-            ],
+        gradient: const LinearGradient(
+          colors: [Colors.redAccent, Colors.orangeAccent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.redAccent.withValues(alpha: 0.4),
+            blurRadius: 15,
+            spreadRadius: 2,
           ),
-          const SizedBox(height: 16),
-          Stack(
-            children: [
-              // Background Bar
-              Container(
-                height: 16,
-                decoration: BoxDecoration(
-                  color: GameTheme.textSecondary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+        ],
+      ),
+      padding: const EdgeInsets.all(2), // 2px border width
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Trophy Icon Section
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: rankColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: rankColor, width: 2),
+                  ),
+                  child: Icon(
+                    Icons.emoji_events_rounded,
+                    color: rankColor,
+                    size: 32,
+                  ),
                 ),
-              ),
-              // Progress Bar Animation
-              TweenAnimationBuilder<double>(
-                tween: Tween<double>(begin: oldProgress.clamp(0.0, 1.0), end: progress.clamp(0.0, 1.0)),
-                duration: const Duration(seconds: 2),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, child) => FractionallySizedBox(
-                  widthFactor: value,
-                  child: Container(
-                    height: 16,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFFFFA500), Color(0xFFFF4500)]), // Orange for Ranked
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                         BoxShadow(color: const Color(0xFFFFA500).withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2))
-                      ],
+                const SizedBox(width: 16),
+                // Text Section
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'RANKED RATING: ${fullName.toUpperCase()}',
+                        style: TextStyle(
+                          color: GameTheme.textSecondary.withValues(alpha: 0.8),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            '$newPoints',
+                            style: const TextStyle(
+                              color: Colors.black, // Dark text on white bg
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          if (pointsGained > 0) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              '(+$pointsGained)',
+                              style: const TextStyle(
+                                color: Colors.green,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Progress Bar
+            Stack(
+              children: [
+                // Background Bar
+                Container(
+                  height: 12, // Slightly thinner for elegance
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                // Progress Bar Animation
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: oldProgress.clamp(0.0, 1.0), end: progress.clamp(0.0, 1.0)),
+                  duration: const Duration(seconds: 2),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, child) => FractionallySizedBox(
+                    widthFactor: value,
+                    child: Container(
+                      height: 12,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Colors.redAccent, Colors.orangeAccent]),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                           BoxShadow(color: Colors.redAccent.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2))
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(fullName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: GameTheme.textPrimary)),
-              if (newPoints < 7500)
-                Text('${nextThreshold - newPoints} RP to next tier', style: const TextStyle(color: GameTheme.textSecondary, fontSize: 12)),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                 Text(
+                   '${(progress * 100).toInt()}%',
+                   style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold)
+                 ),
+                 if (newPoints < 7500)
+                   Text(
+                     '${nextThreshold - newPoints} RP to next tier', 
+                     style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500)
+                   ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -9,6 +9,7 @@ import 'package:nertz_royale/services/supabase_service.dart';
 import 'package:nertz_royale/services/matchmaking_service.dart'; // Added
 
 import 'package:nertz_royale/ui/theme/game_theme.dart';
+import 'package:nertz_royale/ui/widgets/bounceable.dart';
 import 'leaderboard_screen.dart';
 import 'customization_screen.dart';
 
@@ -270,7 +271,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                      ),
                      
                      // Avatar
-                     GestureDetector(
+                     Bounceable(
                        onTap: _pickAndUploadImage,
                        child: Container(
                          width: 110,
@@ -296,7 +297,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                      Positioned(
                        bottom: 0,
                        right: 0,
-                       child: GestureDetector(
+                       child: Bounceable(
                          onTap: _pickAndUploadImage,
                          child: Container(
                            padding: const EdgeInsets.all(8),
@@ -316,7 +317,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                  // Customization Gear (Right of Avatar)
                  Padding(
                    padding: const EdgeInsets.only(left: 12, bottom: 12),
-                   child: GestureDetector(
+                   child: Bounceable(
                      onTap: () {
                         Navigator.push(
                           context,
@@ -539,28 +540,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: 40),
               
               // Sign Out Button
-              TextButton.icon(
-                onPressed: () async {
-                  // Show confirmation? Or just sign out.
-                  // For now, just sign out as requested.
+              Bounceable(
+                onTap: () async {
                   await _service.signOut();
-                  // Navigate to root to ensure AuthGate picks it up cleanly
                   if (context.mounted) {
                     Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
                   }
                 },
-                style: TextButton.styleFrom(
+                child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  backgroundColor: Colors.red.withOpacity(0.1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                ),
-                icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text(
-                  'Sign Out', 
-                  style: TextStyle(
-                    color: Colors.red, 
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.logout, color: Colors.red),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Sign Out',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
