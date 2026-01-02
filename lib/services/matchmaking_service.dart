@@ -16,12 +16,11 @@ import '../ui/theme/game_theme.dart';
 /// Rank Tier definitions
 enum RankTier {
   bronze(0, 'Bronze', Color(0xFFCD7F32)),
-  silver(1200, 'Silver', Color(0xFFC0C0C0)),
-  gold(1400, 'Gold', Color(0xFFFFD700)),
-  platinum(1600, 'Platinum', Color(0xFF00CED1)),
-  diamond(1900, 'Diamond', Color(0xFFB9F2FF)),
-  master(2200, 'Master', Color(0xFF9B59B6)),
-  legend(2600, 'Legend', Color(0xFFFF4500));
+  silver(500, 'Silver', Color(0xFFC0C0C0)),
+  gold(1000, 'Gold', Color(0xFFFFD700)),
+  platinum(2500, 'Platinum', Color(0xFF00CED1)),
+  master(5000, 'Master', Color(0xFF9B59B6)),
+  legend(7500, 'Legend', Color(0xFFFF4500));
 
   final int minPoints;
   final String label;
@@ -31,11 +30,38 @@ enum RankTier {
   static RankTier fromPoints(int points) {
     if (points >= legend.minPoints) return legend;
     if (points >= master.minPoints) return master;
-    if (points >= diamond.minPoints) return diamond;
     if (points >= platinum.minPoints) return platinum;
     if (points >= gold.minPoints) return gold;
     if (points >= silver.minPoints) return silver;
     return bronze;
+  }
+  
+  // Calculate sub-rank (V to I) based on points within tier
+  String getSubRank(int points) {
+    if (this == legend) return ''; // Legend has no sub-ranks
+    
+    // Determine next tier threshold
+    int nextTierPoints;
+    switch (this) {
+      case RankTier.bronze: nextTierPoints = RankTier.silver.minPoints; break;
+      case RankTier.silver: nextTierPoints = RankTier.gold.minPoints; break;
+      case RankTier.gold: nextTierPoints = RankTier.platinum.minPoints; break;
+      case RankTier.platinum: nextTierPoints = RankTier.master.minPoints; break;
+      case RankTier.master: nextTierPoints = RankTier.legend.minPoints; break;
+      default: return '';
+    }
+    
+    int range = nextTierPoints - minPoints;
+    int pointsInTier = points - minPoints;
+    
+    // 5 divisions
+    double progress = pointsInTier / range;
+    
+    if (progress < 0.2) return 'V';
+    if (progress < 0.4) return 'IV';
+    if (progress < 0.6) return 'III';
+    if (progress < 0.8) return 'II';
+    return 'I';
   }
 }
 

@@ -44,12 +44,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             fontSize: 24,
           ),
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: CurrencyDisplay(compact: true),
-          ),
-        ],
+
       ),
       body: Column(
         children: [

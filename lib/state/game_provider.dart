@@ -561,13 +561,9 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         MissionService().trackWin(durationSeconds: duration);
         MissionService().trackNertzCall();
       }
-      
-      // Track Ranked Result (ELO)
-      // For now, simple logic: WIN = +25, LOSS = -10 (MVP)
-      // Real implementation would pass opponent ELOs
-      final pointsChange = isWin ? 25 : -10;
-      MatchmakingService().reportResult(isWin: isWin, pointsChange: pointsChange);
     }
+      
+
 
     state!.endRound(winnerId);
     state = GameState.fromJson(state!.toJson()); // Notify listeners
@@ -575,6 +571,17 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     // Sync state if host
     if (state!.hostId == client.playerId) {
       client.updateState(state!);
+    }
+    
+    // Ranked Points Update (Must happen after endRound calculates scores)
+    final pId = client.playerId;
+    if (pId != null && state!.players.containsKey(pId)) {
+       final playerState = state!.players[pId]!;
+       final pointsChange = playerState.scoreThisRound;
+       final isWin = winnerId == currentPlayerId;
+       
+       // Report to backend
+       MatchmakingService().reportResult(isWin: isWin, pointsChange: pointsChange);
     }
   }
   

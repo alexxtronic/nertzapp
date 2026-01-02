@@ -71,19 +71,73 @@ class IAPService {
   }
 
   Future<void> loadProducts() async {
-    if (!_isAvailable) return;
+    List<ProductDetails> products = [];
+    
+    // Try to load real products
+    if (_isAvailable) {
+      final ProductDetailsResponse response = await _iap.queryProductDetails(_kProductIds);
+      if (response.notFoundIDs.isNotEmpty) {
+        debugPrint('⚠️ Products not found: ${response.notFoundIDs}');
+      }
+      products = response.productDetails;
+    }
 
-    final ProductDetailsResponse response = await _iap.queryProductDetails(_kProductIds);
-    if (response.notFoundIDs.isNotEmpty) {
-      debugPrint('⚠️ Products not found: ${response.notFoundIDs}');
+    // Fallback to Mock Products if list is empty (for testing/simulator)
+    if (products.isEmpty) {
+      debugPrint('⚠️ No products found or store unavailable. Using MOCK products.');
+      products = _getMockProducts();
     }
     
-    // Emit loaded products
-    // Sort them by price if needed, or keeping them as list
-    final products = response.productDetails;
+    // Sort
     products.sort((a, b) => a.rawPrice.compareTo(b.rawPrice));
     
     _productsController.add(products);
+  }
+
+  // Mock Products for testing
+  List<ProductDetails> _getMockProducts() {
+    return [
+      ProductDetails(
+        id: 'gems_pack_small',
+        title: 'Small Gem Pack',
+        description: '50 Gems',
+        price: '\$0.99',
+        rawPrice: 0.99,
+        currencyCode: 'USD',
+      ),
+      ProductDetails(
+        id: 'gems_pack_medium',
+        title: 'Medium Gem Pack',
+        description: '200 Gems (+Bonus)',
+        price: '\$4.99',
+        rawPrice: 4.99,
+        currencyCode: 'USD',
+      ),
+      ProductDetails(
+        id: 'gems_pack_large',
+        title: 'Large Gem Pack',
+        description: '500 Gems',
+        price: '\$9.99',
+        rawPrice: 9.99,
+        currencyCode: 'USD',
+      ),
+      ProductDetails(
+        id: 'gems_pack_huge',
+        title: 'Huge Gem Pack',
+        description: '1200 Gems',
+        price: '\$19.99',
+        rawPrice: 19.99,
+        currencyCode: 'USD',
+      ),
+      ProductDetails(
+        id: 'bundle_starter',
+        title: 'Starter Bundle',
+        description: '1000 Coins + 100 Gems',
+        price: '\$2.99',
+        rawPrice: 2.99,
+        currencyCode: 'USD',
+      ),
+    ];
   }
 
   Future<void> buyProduct(ProductDetails product) async {

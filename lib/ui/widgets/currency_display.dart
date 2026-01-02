@@ -45,6 +45,7 @@ class CurrencyDisplay extends ConsumerWidget {
               compact: compact,
               large: large,
               lightMode: lightMode,
+              showPlus: true,
             ),
           ],
         );
@@ -66,6 +67,7 @@ class _CurrencyChip extends StatelessWidget {
   final bool compact;
   final bool large;
   final bool lightMode;
+  final bool showPlus;
 
   const _CurrencyChip({
     required this.iconAsset,
@@ -74,6 +76,7 @@ class _CurrencyChip extends StatelessWidget {
     this.compact = false,
     this.large = false,
     this.lightMode = false,
+    this.showPlus = false,
   });
 
   @override
@@ -117,6 +120,14 @@ class _CurrencyChip extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+          if (showPlus) ...[
+            const SizedBox(width: 4),
+            Icon(
+              Icons.add_circle,
+              size: compact ? 14 : 16,
+              color: lightMode ? Colors.white70 : color,
+            ),
+          ],
         ],
       ),
     );

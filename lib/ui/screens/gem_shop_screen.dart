@@ -191,10 +191,10 @@ class _GemShopScreenState extends ConsumerState<GemShopScreen> {
     // Extract numbers from title/description if needed, or use ID map
     int amount = 0;
     // Simple parsing logic or map
-    if (product.id.contains('small')) amount = 50;
-    else if (product.id.contains('medium')) amount = 200;
-    else if (product.id.contains('large')) amount = 500;
-    else if (product.id.contains('huge')) amount = 1200;
+    if (product.id.contains('small')) amount = 5;
+    else if (product.id.contains('medium')) amount = 12;
+    else if (product.id.contains('large')) amount = 25;
+    else if (product.id.contains('huge')) amount = 75;
     
     // For bundle
     if (!isGem) {

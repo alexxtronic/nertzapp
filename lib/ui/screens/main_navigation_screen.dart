@@ -16,6 +16,7 @@ import 'shop_screen.dart';
 import 'battle_tab.dart';
 import 'friends_tab.dart';
 import 'profile_screen.dart';
+import '../../services/supabase_service.dart'; // Fixed import
 import '../theme/game_theme.dart';
 import '../widgets/currency_display.dart';
 import 'gem_shop_screen.dart';
@@ -36,10 +37,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   late final List<Widget> _screens;
   late AnimationController _glassAnimationController;
   late Animation<double> _glassAnimation;
+  Map<String, dynamic>? _profile; // Added state
   
   @override
   void initState() {
     super.initState();
+    _loadProfile(); // Fetch profile
     
     _screens = [
       const MissionsTab(),
@@ -59,6 +62,13 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
       parent: _glassAnimationController,
       curve: Curves.easeOutCubic,
     );
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await SupabaseService().getProfile();
+    if (mounted) {
+      setState(() => _profile = profile);
+    }
   }
   
   @override
@@ -118,22 +128,48 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   }
   
   Widget _buildCurrencyHeader() {
-    return GestureDetector(
-      onTap: () {
-        // Open gem shop
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const GemShopScreen()),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            const CurrencyDisplay(compact: false, large: true),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 16, 12), // Adjusted padding (right 16)
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // Currency (Tappable)
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GemShopScreen()),
+              );
+            },
+            child: const CurrencyDisplay(compact: false, large: true),
+          ),
+          
+          const SizedBox(width: 12), // Spacing
+          
+          // Profile Icon (Tappable) - Leads to Profile Tab (Index 4)
+          GestureDetector(
+            onTap: () => _onTabTapped(4),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: GameTheme.softShadow,
+                color: Colors.grey.shade200,
+              ),
+              child: ClipOval(
+                child: _profile?['avatar_url'] != null
+                    ? Image.network(
+                        _profile!['avatar_url'],
+                        fit: BoxFit.cover,
+                        errorBuilder: (_,__,___) => const Icon(Icons.person, color: Colors.grey),
+                      )
+                    : const Icon(Icons.person, color: Colors.grey),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

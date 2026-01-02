@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/game_provider.dart';
 import '../../services/audio_service.dart';
 import '../../state/economy_provider.dart';
+import '../../services/supabase_service.dart';
 import '../theme/game_theme.dart';
 import '../widgets/bot_difficulty_dialog.dart';
 import '../widgets/quick_match_overlay.dart'; // Added
@@ -26,17 +27,26 @@ class BattleTab extends ConsumerStatefulWidget {
 }
 
 class _BattleTabState extends ConsumerState<BattleTab> {
+  Map<String, dynamic>? _profile;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _loadProfile();
     // Start background music
     ref.read(selectedMusicAssetProvider.future).then((path) {
       if (mounted) {
         AudioService().startBackgroundMusic(path: path);
       }
     });
+  }
+
+  Future<void> _loadProfile() async {
+    final p = await SupabaseService().getProfile();
+    if (mounted) {
+      setState(() => _profile = p);
+    }
   }
 
   void _startLocalGame() {
@@ -81,49 +91,129 @@ class _BattleTabState extends ConsumerState<BattleTab> {
 
   @override
   Widget build(BuildContext context) {
+    final rankedPoints = (_profile?['ranked_points'] as int?) ?? 1000;
+    // Calculate simple tier for display (1000 base, +500 per tier)
+    // This is purely visual for the home screen card
+    final tierProgress = ((rankedPoints % 500) / 500).clamp(0.0, 1.0);
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Hero Image
-          Container(
-            margin: const EdgeInsets.only(bottom: 32),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Image.asset(
-                'assets/splash_hero.png',
-                height: 200,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [GameTheme.primary, GameTheme.secondary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'NERTZ ROYALE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
+          Align(
+            alignment: Alignment.center,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 24, top: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.asset(
+                  'assets/splash_hero.png',
+                  height: 160,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox(height: 120),
                 ),
               ),
             ),
           ),
 
+          // Ranked Points Card (Burst Design)
+          Container(
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF512F), Color(0xFFDD2476)], // Red-Orange burst
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF512F).withOpacity(0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // Background Pattern (subtle circles)
+                Positioned(
+                  right: -20,
+                  top: -20,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Row(
+                    children: [
+                      // Trophy
+                      Image.asset('assets/trophies/gold.png', width: 64, height: 64, 
+                          errorBuilder: (_,__,___) => const Icon(Icons.emoji_events, size: 60, color: Colors.white)),
+                      const SizedBox(width: 20),
+                      
+                      // Stats
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'RANKED RATING',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$rankedPoints',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.w900,
+                                height: 1.0,
+                                shadows: [
+                                  Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // Progress Bar
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: tierProgress,
+                                backgroundColor: Colors.black12,
+                                valueColor: const AlwaysStoppedAnimation(Colors.white),
+                                minHeight: 6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Ranked Quick Match Button
           _buildGameButton(
-            title: 'Ranked Quick Match!',
-            subtitle: '3 rounds • 4 players • ELO ranked',
+            title: 'Quick Match!',
+            subtitle: 'Play against real people!',
             icon: Icons.bolt,
             gradient: const LinearGradient(
               colors: [Color(0xFFFF6B35), Color(0xFFE53935)],

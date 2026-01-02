@@ -412,7 +412,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                        child: Column(
                          children: [
                             Text(
-                              rank.toUpperCase(),
+                              '${rank.toUpperCase()} ${rankTier.getSubRank(rankedPoints)}',
                               style: TextStyle(
                                 color: ringColor,
                                 fontWeight: FontWeight.w900,
