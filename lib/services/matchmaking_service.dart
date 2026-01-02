@@ -289,28 +289,44 @@ class MatchmakingService {
     }
   }
 
-  /// Report game result to backend (updates ELO)
-  Future<void> reportResult({required bool isWin, required int pointsChange}) async {
-     if (_currentUserId == null) return;
-     try {
-       await _supabase.rpc('update_ranked_result', params: {
-         'p_user_id': _currentUserId,
-         'p_points_change': pointsChange,
-         'p_is_win': isWin,
-       });
-       debugPrint('🏆 Ranked result reported: ${isWin ? "WIN" : "LOSS"} ($pointsChange pts)');
-     } catch (e) {
-       debugPrint('Error reporting ranked result: $e');
-     }
-  }
-
-  /// Calculate ELO points change
-  /// K-Factor = 32
-  int calculateEloChange(int playerElo, int opponentElo, bool isWin) {
-    const kFactor = 32;
-    final expectedScore = 1 / (1 + pow(10, (opponentElo - playerElo) / 400));
-    final actualScore = isWin ? 1.0 : 0.0;
+  /// Report ranked match result based on placement
+  /// 1st place: total points + 50 bonus
+  /// 2nd place: total points + 25 bonus
+  /// 3rd/4th place: total points only (no bonus)
+  Future<void> reportRankedMatchResult({
+    required int placement, // 1, 2, 3, or 4
+    required int totalPoints, // Score from the game
+  }) async {
+    if (_currentUserId == null) return;
     
-    return (kFactor * (actualScore - expectedScore)).round();
+    // Calculate bonus based on placement
+    int bonus = 0;
+    if (placement == 1) {
+      bonus = 50;
+    } else if (placement == 2) {
+      bonus = 25;
+    }
+    // 3rd and 4th get no bonus
+    
+    final pointsChange = totalPoints + bonus;
+    final isWin = placement == 1; // Only 1st place counts as "win" for stats
+    
+    try {
+      await _supabase.rpc('update_ranked_result', params: {
+        'p_user_id': _currentUserId,
+        'p_points_change': pointsChange,
+        'p_is_win': isWin,
+      });
+      debugPrint('🏆 Ranked result: ${placement}${_getOrdinal(placement)} place, +$pointsChange points (base: $totalPoints, bonus: $bonus)');
+    } catch (e) {
+      debugPrint('Error reporting ranked result: $e');
+    }
+  }
+  
+  String _getOrdinal(int n) {
+    if (n == 1) return 'st';
+    if (n == 2) return 'nd';
+    if (n == 3) return 'rd';
+    return 'th';
   }
 }

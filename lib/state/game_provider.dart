@@ -341,7 +341,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       debugPrint('⚠️ Failed to fetch profile avatar: $e');
     }
 
-    state = GameState.newMatch(id, playerId, playerName, hostSelectedCardBack: cardBack, hostAvatarUrl: avatarUrl);
+    state = GameState.newMatch(id, playerId, playerName, hostSelectedCardBack: cardBack, hostAvatarUrl: avatarUrl, isRanked: autoStart);
     
     debugPrint('🏠 GameState created. hostId: ${state!.hostId}');
     joinGame(id);
@@ -363,7 +363,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       Future.delayed(const Duration(seconds: 3), () {
         if (state != null && state!.phase == GamePhase.lobby) {
           debugPrint('🚀 Auto-starting ranked game!');
-          startNextRound();
+          startNewRound();
         }
       });
     }
@@ -599,11 +599,16 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     final pId = client.playerId;
     if (pId != null && state!.players.containsKey(pId)) {
        final playerState = state!.players[pId]!;
-       final pointsChange = playerState.scoreThisRound;
-       final isWin = winnerId == currentPlayerId;
+       // Calculate placement based on total score
+       final allPlayers = state!.players.values.toList();
+       allPlayers.sort((a, b) => b.scoreTotal.compareTo(a.scoreTotal)); // Descending
+       final placement = allPlayers.indexWhere((p) => p.id == pId) + 1;
        
        // Report to backend
-       MatchmakingService().reportResult(isWin: isWin, pointsChange: pointsChange);
+       MatchmakingService().reportRankedMatchResult(
+         placement: placement,
+         totalPoints: playerState.scoreTotal,
+       );
     }
   }
   

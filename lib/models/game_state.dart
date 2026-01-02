@@ -33,6 +33,7 @@ class GameState {
   DateTime? lastResetTime;
   String? resetVoteInitiatorId; // Who started the current vote
   DateTime? matchStartTime;
+  bool isRanked; // True for Quick Match games - affects point calculation
 
   GameState({
     required this.matchId,
@@ -48,12 +49,13 @@ class GameState {
     this.lastResetTime,
     this.resetVoteInitiatorId,
     this.matchStartTime,
+    this.isRanked = false,
   });
   
   bool get isFull => players.length >= maxPlayers;
 
 
-  factory GameState.newMatch(String matchId, String hostId, String hostName, {String? hostSelectedCardBack, String? hostAvatarUrl, int hostTotalXp = 0}) {
+  factory GameState.newMatch(String matchId, String hostId, String hostName, {String? hostSelectedCardBack, String? hostAvatarUrl, int hostTotalXp = 0, bool isRanked = false}) {
     final hostState = PlayerState(
       id: hostId,
       displayName: hostName,
@@ -73,6 +75,7 @@ class GameState {
       centerPiles: List.generate(18, (_) => CenterPile()),
       hostId: hostId,
       matchStartTime: DateTime.now(),
+      isRanked: isRanked,
     );
   }
 
@@ -323,6 +326,7 @@ class GameState {
     'lastResetTime': lastResetTime?.toIso8601String(),
     'resetVoteInitiatorId': resetVoteInitiatorId,
     'matchStartTime': matchStartTime?.toIso8601String(),
+    'isRanked': isRanked,
   };
 
   factory GameState.fromJson(Map<String, dynamic> json) {
@@ -353,6 +357,7 @@ class GameState {
       matchStartTime: json['matchStartTime'] != null
         ? DateTime.parse(json['matchStartTime'])
         : null,
+      isRanked: json['isRanked'] as bool? ?? false,
     );
   }
 }

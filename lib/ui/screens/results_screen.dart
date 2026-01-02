@@ -16,6 +16,9 @@ import 'package:nertz_royale/models/player_state.dart';
 class ResultsScreen extends ConsumerStatefulWidget {
   final int? oldXp;
   final int? newXp;
+  final int? oldRanked;
+  final int? newRanked;
+  final bool isRanked;
   final List<PlayerState> leaderboard;
   final String currentUserId;
 
@@ -23,6 +26,9 @@ class ResultsScreen extends ConsumerStatefulWidget {
     super.key, 
     this.oldXp, 
     this.newXp,
+    this.oldRanked,
+    this.newRanked,
+    this.isRanked = false,
     required this.leaderboard,
     required this.currentUserId,
   });
@@ -129,7 +135,11 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             children: [
               const SizedBox(height: 20),
               _buildWinnerSection(winner, isCurrentPlayerWinner),
-              if (widget.oldXp != null && widget.newXp != null) ...[
+              // Show Rank Progress for Ranked Games, otherwise XP Progress
+              if (widget.isRanked && widget.oldRanked != null && widget.newRanked != null) ...[
+                 const SizedBox(height: 16),
+                 _buildRankedProgressBar(widget.oldRanked!, widget.newRanked!),
+              ] else if (widget.oldXp != null && widget.newXp != null) ...[
                  const SizedBox(height: 16),
                  _buildXpProgressBar(widget.oldXp!, widget.newXp!),
               ],
@@ -424,6 +434,149 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     );
   }
 
+  Widget _buildRankedProgressBar(int oldPoints, int newPoints) {
+    // Ranked Thresholds (Matching DB logic)
+    // Bronze: 0-499
+    // Silver: 500-999
+    // Gold: 1000-2499
+    // Platinum: 2500-4999
+    // Master: 5000-7499
+    // Legend: 7500+
+
+    String getTierName(int points) {
+      if (points < 500) return 'Bronze';
+      if (points < 1000) return 'Silver';
+      if (points < 2500) return 'Gold';
+      if (points < 5000) return 'Platinum';
+      if (points < 7500) return 'Master';
+      return 'Legend';
+    }
+
+    int getTierStart(int points) {
+      if (points < 500) return 0;
+      if (points < 1000) return 500;
+      if (points < 2500) return 1000;
+      if (points < 5000) return 2500;
+      if (points < 7500) return 5000;
+      return 7500;
+    }
+    
+    int getNextTierStart(int points) {
+      if (points < 500) return 500;
+      if (points < 1000) return 1000;
+      if (points < 2500) return 2500;
+      if (points < 5000) return 5000;
+      if (points < 7500) return 7500;
+      return 100000; // Cap
+    }
+
+    // Roman Numerals for sub-tiers (V, IV, III, II, I)
+    String getSubTier(int points) {
+      if (points >= 7500) return ''; // Legend has no sub-tiers
+      
+      final start = getTierStart(points);
+      final end = getNextTierStart(points);
+      final range = end - start;
+      final step = range / 5;
+      final offset = points - start;
+      
+      if (offset < step) return 'V';
+      if (offset < step * 2) return 'IV';
+      if (offset < step * 3) return 'III';
+      if (offset < step * 4) return 'II';
+      return 'I';
+    }
+    
+    final currentTier = getTierName(newPoints);
+    final subTier = getSubTier(newPoints);
+    final fullName = '$currentTier $subTier'.trim();
+    
+    final startThreshold = getTierStart(newPoints);
+    final nextThreshold = getNextTierStart(newPoints);
+    final totalRange = nextThreshold - startThreshold;
+    
+    final oldProgress = (oldPoints - startThreshold) / totalRange;
+    final progress = (newPoints - startThreshold) / totalRange;
+    
+    final didRankUp = getTierName(oldPoints) != currentTier;
+    final pointsGained = newPoints - oldPoints;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: GameTheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: didRankUp ? GameTheme.accent : Colors.transparent, width: 2),
+        boxShadow: didRankUp ? [
+          BoxShadow(color: GameTheme.accent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 2)
+        ] : null,
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                didRankUp ? 'TIER UP!' : 'RANK PROGRESS', 
+                style: TextStyle(
+                  color: didRankUp ? GameTheme.accent : GameTheme.textSecondary, 
+                  fontWeight: FontWeight.bold, 
+                  letterSpacing: 1.5
+                )
+              ),
+              Text(
+                '$newPoints RP ${pointsGained >= 0 ? "(+$pointsGained)" : ""}', 
+                style: const TextStyle(fontWeight: FontWeight.bold, color: GameTheme.textPrimary)
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Stack(
+            children: [
+              // Background Bar
+              Container(
+                height: 16,
+                decoration: BoxDecoration(
+                  color: GameTheme.textSecondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              // Progress Bar Animation
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: oldProgress.clamp(0.0, 1.0), end: progress.clamp(0.0, 1.0)),
+                duration: const Duration(seconds: 2),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) => FractionallySizedBox(
+                  widthFactor: value,
+                  child: Container(
+                    height: 16,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFFFA500), Color(0xFFFF4500)]), // Orange for Ranked
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                         BoxShadow(color: const Color(0xFFFFA500).withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2))
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(fullName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: GameTheme.textPrimary)),
+              if (newPoints < 7500)
+                Text('${nextThreshold - newPoints} RP to next tier', style: const TextStyle(color: GameTheme.textSecondary, fontSize: 12)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildXpProgressBar(int oldXp, int newXp) {
     // Rank Logic
     // Bronze: 0-999, Silver: 1000-2499, Gold: 2500-4999, Platinum: 5000+
@@ -450,14 +603,14 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     }
     
     String getRankName(int xp) {
-      if (xp < 1000) return 'Bronze';
-      if (xp < 2500) return 'Silver';
-      if (xp < 5000) return 'Gold';
-      if (xp < 10000) return 'Platinum';
-      if (xp < 25000) return 'Diamond';
-      if (xp < 75000) return 'Master';
-      if (xp < 150000) return 'Grandmaster';
-      return 'Legend';
+      if (xp < 1000) return 'Level 1';
+      if (xp < 2500) return 'Level 2';
+      if (xp < 5000) return 'Level 3';
+      if (xp < 10000) return 'Level 4';
+      if (xp < 25000) return 'Level 5';
+      if (xp < 75000) return 'Level 6';
+      if (xp < 150000) return 'Level 7';
+      return 'Max Level';
     }
 
     final startThreshold = getStartRankThreshold(newXp);

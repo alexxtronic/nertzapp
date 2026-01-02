@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui'; // Required for ImageFilter
 import 'package:nertz_royale/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/matchmaking_service.dart';
 
 import '../../models/card.dart';
 import '../../models/player_state.dart';
@@ -41,6 +42,8 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
   bool _sheetScheduled = false;
   int? _oldXp; // For Results screen animation
   int? _newXp; // For Results screen animation
+  int? _oldRanked; // For Results screen animation
+  int? _newRanked; // For Results screen animation
 
   @override
   void initState() {
@@ -307,6 +310,20 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
     final myId = ref.read(playerIdProvider);
     final leaderboard = gameState?.getLeaderboard() ?? [];
     
+    // Ranked Match Logic: Report results
+    if (gameState != null && gameState.isRanked && myId != null) {
+      final myIndex = leaderboard.indexWhere((p) => p.id == myId);
+      if (myIndex != -1) {
+        final placement = myIndex + 1;
+        final myScore = leaderboard[myIndex].scoreTotal;
+        debugPrint('🏆 Reporting Ranked Result: Place #$placement, Score: $myScore');
+        MatchmakingService().reportRankedMatchResult(
+          placement: placement, 
+          totalPoints: myScore
+        );
+      }
+    }
+    
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => ResultsScreen(
@@ -314,6 +331,10 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
           newXp: _newXp,
           leaderboard: leaderboard,
           currentUserId: myId,
+          // New Ranked Props
+          oldRanked: _oldRanked,
+          newRanked: _newRanked,
+          isRanked: gameState?.isRanked ?? false,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
@@ -593,10 +614,29 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
         // 3. Process DB Updates (Async)
         Future.microtask(() async {
            try {
-             // A. Get current profile for Old XP
+             // A. Get current profile for Old XP and Ranked Points
              final profile = await SupabaseService().getProfile();
              final currentTotalXp = (profile?['total_xp'] as int?) ?? 0;
-             if (mounted) setState(() => _oldXp = currentTotalXp);
+             final currentRanked = (profile?['ranked_points'] as int?) ?? 1000;
+             
+             if (mounted) setState(() {
+               _oldXp = currentTotalXp;
+               _oldRanked = currentRanked;
+             });
+             
+             // Calculate Expected Ranked Points Change (for UI only - DB updated by MatchmakingService)
+             if (gameState.isRanked) {
+                final leaderboard = gameState.getLeaderboard();
+                final myIndex = leaderboard.indexWhere((p) => p.id == localPlayerId);
+                if (myIndex != -1) {
+                  final placement = myIndex + 1;
+                  int bonus = 0;
+                  if (placement == 1) bonus = 50;
+                  else if (placement == 2) bonus = 25;
+                  final myscore = leaderboard[myIndex].scoreTotal;
+                  if (mounted) setState(() => _newRanked = currentRanked + myscore + bonus);
+                }
+             }
              
              // B. Add new XP
              if (totalEarnedXp > 0) {
