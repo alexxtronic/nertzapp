@@ -29,11 +29,13 @@ class IAPService {
   // Products available for sale
   // TODO: These IDs must match exactly what is in App Store Connect
   static const Set<String> _kProductIds = {
-    'gems_pack_small',   // e.g. 50 gems
-    'gems_pack_medium',  // e.g. 200 gems
-    'gems_pack_large',   // e.g. 500 gems
-    'gems_pack_huge',    // e.g. 1200 gems
-    'bundle_starter',    // e.g. Coins + Gems
+    'gems_pack_small',   // 5 gems ($0.99)
+    'gems_pack_medium',  // 20 gems ($2.99)
+    'gems_pack_large',   // 50 gems ($5.99)
+    'gems_pack_huge',    // 250 gems ($19.99)
+    'bundle_starter',    // 15 Gems + 1500 Coins ($2.99)
+    'bundle_pro',        // 100 Gems + 2000 Coins ($10.99)
+    'bundle_ultimate',   // 350 Gems + 5000 Coins ($29.99)
   };
 
   final _productsController = StreamController<List<ProductDetails>>.broadcast();
@@ -100,7 +102,7 @@ class IAPService {
       ProductDetails(
         id: 'gems_pack_small',
         title: 'Small Gem Pack',
-        description: '50 Gems',
+        description: '5 Gems',
         price: '\$0.99',
         rawPrice: 0.99,
         currencyCode: 'USD',
@@ -108,23 +110,23 @@ class IAPService {
       ProductDetails(
         id: 'gems_pack_medium',
         title: 'Medium Gem Pack',
-        description: '200 Gems (+Bonus)',
-        price: '\$4.99',
-        rawPrice: 4.99,
+        description: '20 Gems',
+        price: '\$2.99',
+        rawPrice: 2.99,
         currencyCode: 'USD',
       ),
       ProductDetails(
         id: 'gems_pack_large',
         title: 'Large Gem Pack',
-        description: '500 Gems',
-        price: '\$9.99',
-        rawPrice: 9.99,
+        description: '50 Gems',
+        price: '\$5.99',
+        rawPrice: 5.99,
         currencyCode: 'USD',
       ),
       ProductDetails(
         id: 'gems_pack_huge',
         title: 'Huge Gem Pack',
-        description: '1200 Gems',
+        description: '250 Gems',
         price: '\$19.99',
         rawPrice: 19.99,
         currencyCode: 'USD',
@@ -132,9 +134,25 @@ class IAPService {
       ProductDetails(
         id: 'bundle_starter',
         title: 'Starter Bundle',
-        description: '1000 Coins + 100 Gems',
+        description: '1500 Coins + 15 Gems',
         price: '\$2.99',
         rawPrice: 2.99,
+        currencyCode: 'USD',
+      ),
+      ProductDetails(
+        id: 'bundle_pro',
+        title: 'Pro Bundle',
+        description: '2000 Coins + 100 Gems',
+        price: '\$10.99',
+        rawPrice: 10.99,
+        currencyCode: 'USD',
+      ),
+      ProductDetails(
+        id: 'bundle_ultimate',
+        title: 'Ultimate Bundle',
+        description: '5000 Coins + 350 Gems',
+        price: '\$29.99',
+        rawPrice: 29.99,
         currencyCode: 'USD',
       ),
     ];
@@ -176,20 +194,28 @@ class IAPService {
 
     switch (purchase.productID) {
       case 'gems_pack_small':
-        gemsToAdd = 50;
+        gemsToAdd = 5;
         break;
       case 'gems_pack_medium':
-        gemsToAdd = 200;
+        gemsToAdd = 20;
         break;
       case 'gems_pack_large':
-        gemsToAdd = 500;
+        gemsToAdd = 50;
         break;
       case 'gems_pack_huge':
-        gemsToAdd = 1200;
+        gemsToAdd = 250;
         break;
       case 'bundle_starter':
+        gemsToAdd = 15;
+        coinsToAdd = 1500;
+        break;
+     case 'bundle_pro':
         gemsToAdd = 100;
-        coinsToAdd = 1000;
+        coinsToAdd = 2000;
+        break;
+      case 'bundle_ultimate':
+        gemsToAdd = 350;
+        coinsToAdd = 5000;
         break;
       default:
         debugPrint('⚠️ Unknown product ID delivered: ${purchase.productID}');
