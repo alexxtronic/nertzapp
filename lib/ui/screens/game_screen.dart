@@ -763,28 +763,30 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
             },
           ),
           
-          // Lobby Overlay
+          // Lobby Overlay (Show "Get Ready!" for ranked, full lobby for casual)
           if (gameState.phase == GamePhase.lobby)
-             LobbyOverlay(
-                matchId: gameState.matchId, 
-                isHost: gameState.hostId == playerId,
-                onClose: () {
-                  ref.read(gameStateProvider.notifier).reset();
-                  Navigator.of(context).pushAndRemoveUntil(
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) => const MainNavigationScreen(),
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        return FadeTransition(
-                          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                          child: child,
-                        );
-                      },
-                      transitionDuration: const Duration(milliseconds: 300),
-                    ),
-                    (route) => false,
-                  );
-                },
-             ),
+            gameState.isRanked
+                ? _buildGetReadyOverlay()  // Simple "Get Ready!" for ranked
+                : LobbyOverlay(
+                    matchId: gameState.matchId, 
+                    isHost: gameState.hostId == playerId,
+                    onClose: () {
+                      ref.read(gameStateProvider.notifier).reset();
+                      Navigator.of(context).pushAndRemoveUntil(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => const MainNavigationScreen(),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            return FadeTransition(
+                              opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                              child: child,
+                            );
+                          },
+                          transitionDuration: const Duration(milliseconds: 300),
+                        ),
+                        (route) => false,
+                      );
+                    },
+                  ),
 
           // Floating +1 animations
           for (final floater in _floatingScores)
@@ -894,6 +896,56 @@ class _GameScreenState extends ConsumerState<GameScreen> with TickerProviderStat
             child: const Text('CLOSE'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Simple "Get Ready!" overlay for ranked Quick Matches
+  Widget _buildGetReadyOverlay() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.85),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Pulsing animation
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.9, end: 1.1),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeInOut,
+              builder: (context, scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  child: child,
+                );
+              },
+              onEnd: () => setState(() {}), // Restart animation
+              child: const Text(
+                'GET READY!',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 48,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 4,
+                  shadows: [
+                    Shadow(color: GameTheme.primary, blurRadius: 20),
+                    Shadow(color: Colors.black, blurRadius: 10, offset: Offset(2, 2)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const CircularProgressIndicator(color: GameTheme.accent),
+            const SizedBox(height: 16),
+            Text(
+              'Waiting for players to join...',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

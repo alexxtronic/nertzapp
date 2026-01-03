@@ -224,27 +224,48 @@ class EconomyService {
   }
 
   /// Get asset path for a card back item ID
+  /// Supports both legacy hardcoded IDs and new dynamic format
   static String getCardBackAssetPath(String itemId) {
+    // Handle legacy/known IDs
     switch (itemId) {
       case 'card_back_classic_default':
         return 'assets/card_back.png';
       case 'card_back_classic_gold':
         return 'assets/card_backs/classic_gold.png';
       case 'card_back_classic_cosmic':
-        return 'assets/card_backs/classic_cosmic.jpg';
+        return 'assets/card_backs/classic_cosmic.png';
       case 'card_back_hippie_cosmic':
-        return 'assets/card_backs/hippie_cosmic.jpg';
+        return 'assets/card_backs/hippie_cosmic.png';
       case 'card_back_medieval_blue':
-        return 'assets/card_backs/medieval_blue.jpg';
+        return 'assets/card_backs/medieval_blue.png';
       case 'card_back_medieval_red':
-        return 'assets/card_backs/medieval_red.jpg';
+        return 'assets/card_backs/medieval_red.png';
       case 'card_back_swamp':
-        return 'assets/card_backs/swamp.jpg';
+        return 'assets/card_backs/swamp.png';
       case 'card_back_wizard_blue':
-        return 'assets/card_backs/wizard_blue.jpg';
+        return 'assets/card_backs/wizard_blue.png';
       case 'card_back_wizard_gold':
-        return 'assets/card_backs/wizard_gold.jpg';
+        return 'assets/card_backs/wizard_gold.png';
+      // New card backs
+      case 'card_back_3d_blue':
+        return 'assets/card_backs/3d_blue.png';
+      case 'card_back_3d_steel':
+        return 'assets/card_backs/3d_steel.png';
+      case 'card_back_alien_full':
+        return 'assets/card_backs/alien_full.png';
+      case 'card_back_icecream_full':
+        return 'assets/card_backs/icecream_full.png';
+      case 'card_back_pirate_full':
+        return 'assets/card_backs/pirate_full.png';
+      case 'card_back_doodle_rare':
+        return 'assets/card_backs/doodle-rare.png';
       default:
+        // Dynamic fallback: try to construct path from ID
+        // ID format: "card_back_<name>" -> "assets/card_backs/<name>.png"
+        if (itemId.startsWith('card_back_')) {
+          final name = itemId.substring(10); // Remove "card_back_" prefix
+          return 'assets/card_backs/$name.png';
+        }
         return 'assets/card_back.png';
     }
   }

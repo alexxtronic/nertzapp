@@ -12,6 +12,7 @@ import 'package:nertz_royale/ui/theme/game_theme.dart';
 import 'package:nertz_royale/ui/widgets/bounceable.dart';
 import 'leaderboard_screen.dart';
 import 'customization_screen.dart';
+import 'auth_gate.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -208,32 +209,77 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final streak = (_profile!['win_streak'] as int?) ?? 0;
     final bestTime = _profile!['best_time'] as int?;
     
-    // XP Logic
+    // XP Logic & Thresholds
     final xp = (_profile!['total_xp'] as int?) ?? 0;
     
-    // Ranked Logic
+    // XP Rank Thresholds
+    // Bronze: 0 - 500
+    // Silver: 501 - 1500
+    // Gold: 1501 - 2500
+    // Platinum: 2501 - 5000
+    // Master: 5001 - 10000
+    // Legend: 10,001+
+    
+    String xpRankName;
+    int currentRankMin;
+    int nextRankMin;
+    Color xpRankColor;
+    
+    if (xp <= 500) {
+      xpRankName = 'Bronze';
+      currentRankMin = 0;
+      nextRankMin = 501;
+      xpRankColor = const Color(0xFFCD7F32);
+    } else if (xp <= 1500) {
+      xpRankName = 'Silver';
+      currentRankMin = 501;
+      nextRankMin = 1501;
+      xpRankColor = const Color(0xFFC0C0C0);
+    } else if (xp <= 2500) {
+      xpRankName = 'Gold';
+      currentRankMin = 1501;
+      nextRankMin = 2501;
+      xpRankColor = const Color(0xFFFFD700);
+    } else if (xp <= 5000) {
+      xpRankName = 'Platinum';
+      currentRankMin = 2501;
+      nextRankMin = 5001;
+      xpRankColor = const Color(0xFFE5E4E2);
+    } else if (xp <= 10000) {
+      xpRankName = 'Master';
+      currentRankMin = 5001;
+      nextRankMin = 10001;
+      xpRankColor = const Color(0xFF9400D3); // Purple
+    } else {
+      xpRankName = 'Legend';
+      currentRankMin = 10001;
+      nextRankMin = 10001; // Max
+      xpRankColor = const Color(0xFFFF4500); // Orange Red
+    }
+    
+    final isMaxRank = xpRankName == 'Legend';
+    
+    // Calculate Progress Bar (0.0 to 1.0) within current tier
+    double xpProgress = 0.0;
+    if (!isMaxRank) {
+      final range = nextRankMin - currentRankMin;
+      final current = xp - currentRankMin;
+      xpProgress = (current / range).clamp(0.0, 1.0);
+    } else {
+      xpProgress = 1.0;
+    }
+
+    // Ranked Logic (Competitive RP)
     final rankedPoints = (_profile!['ranked_points'] as int?) ?? 1000;
     final rankTier = RankTier.fromPoints(rankedPoints);
     
     // Use Rank for display
-    String rank = rankTier.label;
+    String competitiveRank = rankTier.label;
     Color ringColor = rankTier.color;
     // TODO: Use real assets for ranks if available, fallback to existing or generic
     // Using existing trophy assets mapped to new tiers
-    String trophyAsset = 'assets/trophies/${rank.toLowerCase()}.png';
+    String trophyAsset = 'assets/trophies/${competitiveRank.toLowerCase()}.png';
     
-    // Level Progress based on XP (Keep Level separate from Rank)
-    // Simple level formula: Level = sqrt(XP/100)
-    final level = sqrt(xp / 100).floor();
-    final nextLevelXp = (level + 1) * (level + 1) * 100;
-    final currentLevelBaseXp = level * level * 100;
-    
-    // Avoid division by zero
-    final totalLevelXp = nextLevelXp - currentLevelBaseXp;
-    final levelProgress = totalLevelXp > 0 ? (xp - currentLevelBaseXp) / totalLevelXp : 0.0;
-    
-    final isMaxLevel = level >= 100; // Cap at level 100 for display purposes?
-
     return Scaffold(
       backgroundColor: GameTheme.surfaceLight,
       appBar: AppBar(
@@ -242,12 +288,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         automaticallyImplyLeading: false, // Removed back button per request
         title: const Text("Profile", style: TextStyle(color: GameTheme.textPrimary, fontWeight: FontWeight.bold)),
         centerTitle: true,
+       actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: GameTheme.error),
+            tooltip: 'Sign Out',
+            onPressed: () async {
+               final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Sign Out'),
+                    content: const Text('Are you sure you want to sign out?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sign Out', style: TextStyle(color: Colors.red))),
+                    ],
+                  ),
+               );
+               
+               if (confirm == true) {
+                 await SupabaseService().signOut();
+                 if (mounted) {
+                   Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AuthGate()),
+                      (route) => false,
+                   );
+                 }
+               }
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // 1. Avatar & Level Ring
              // 1. Avatar & Level Ring & Gear
              Row(
                mainAxisAlignment: MainAxisAlignment.center,
@@ -262,7 +336,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                        width: 130,
                        height: 130,
                        child: CircularProgressIndicator(
-                         value: levelProgress,
+                         value: xpProgress,
                          strokeWidth: 6,
                          backgroundColor: Colors.grey.shade200,
                          valueColor: AlwaysStoppedAnimation<Color>(ringColor),
@@ -359,7 +433,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                ],
              ),
-             Text('@$username • Rank: $rank', style: GameTheme.bodyMedium),
+             Text('@$username • Rank: $competitiveRank', style: GameTheme.bodyMedium),
              
              const SizedBox(height: 32),
              
@@ -373,31 +447,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                ),
                child: Column(
                  crossAxisAlignment: CrossAxisAlignment.start,
-                 children: [
-                   Row(
-                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                     children: [
-                       Text("XP Progress", style: GameTheme.label),
-                       Text(isMaxLevel ? "MAX LEVEL" : "$xp / $nextLevelXp XP", style: const TextStyle(fontWeight: FontWeight.bold, color: GameTheme.primary)),
-                     ],
-                   ),
-                   const SizedBox(height: 12),
-                   ClipRRect(
-                     borderRadius: BorderRadius.circular(8),
-                     child: LinearProgressIndicator(
-                       value: isMaxLevel ? 1.0 : levelProgress,
-                       minHeight: 12,
-                       backgroundColor: GameTheme.surfaceLight,
-                       valueColor: AlwaysStoppedAnimation<Color>(ringColor),
-                     ),
-                   ),
-                   const SizedBox(height: 8),
-                   Text(
-                      isMaxLevel 
-                        ? "You are a Nertz Legend!" 
-                        : "${nextLevelXp - xp} XP to reach ${rank == 'Bronze' ? 'Silver' : (rank == 'Silver' ? 'Gold' : 'Platinum')}",
-                      style: const TextStyle(fontSize: 12, color: GameTheme.textSecondary),
-                   ),
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("XP Progress ($xpRankName)", style: GameTheme.label),
+                        Text(
+                          isMaxRank ? "$xp XP" : "$xp / $nextRankMin XP", 
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: GameTheme.primary)
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: xpProgress,
+                        minHeight: 12,
+                        backgroundColor: GameTheme.surfaceLight,
+                        valueColor: AlwaysStoppedAnimation<Color>(xpRankColor),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                       isMaxRank 
+                         ? "You are a Nertz Legend!" 
+                         : "${nextRankMin - xp} XP to reach ${
+                              xpRankName == 'Bronze' ? 'Silver' :
+                              xpRankName == 'Silver' ? 'Gold' :
+                              xpRankName == 'Gold' ? 'Platinum' :
+                              xpRankName == 'Platinum' ? 'Master' :
+                              'Legend'
+                           }",
+                       style: const TextStyle(fontSize: 12, color: GameTheme.textSecondary),
+                    ),
                    
                    const SizedBox(height: 24),
              
@@ -413,7 +496,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                        child: Column(
                          children: [
                             Text(
-                              '${rank.toUpperCase()} ${rankTier.getSubRank(rankedPoints)}',
+                              '${competitiveRank.toUpperCase()} ${rankTier.getSubRank(rankedPoints)}',
                               style: TextStyle(
                                 color: ringColor,
                                 fontWeight: FontWeight.w900,

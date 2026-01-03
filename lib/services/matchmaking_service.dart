@@ -80,30 +80,32 @@ class MatchmakingService {
     if (_currentUserId == null) throw Exception('Not logged in');
 
     try {
-      // Get current profile for points
+      // Get current profile for points AND card back
       final profile = await _supabase
           .from('profiles')
-          .select('username, avatar_url, ranked_points')
+          .select('username, avatar_url, ranked_points, selected_card_back')
           .eq('id', _currentUserId!)
           .single();
 
       final points = profile['ranked_points'] as int? ?? 1000;
       final username = profile['username'] as String? ?? 'Player';
       final avatarUrl = profile['avatar_url'] as String?;
+      final selectedCardBack = profile['selected_card_back'] as String?;
 
       // Clean up any old entry
       await leaveQueue();
 
-      // Insert into queue
+      // Insert into queue (includes card back for opponent display)
       await _supabase.from('matchmaking_queue').insert({
         'user_id': _currentUserId,
         'username': username,
         'avatar_url': avatarUrl,
         'ranked_points': points,
+        'selected_card_back': selectedCardBack,
         'status': 'searching',
       });
       
-      debugPrint('🔍 Joined matchmaking queue ($points ELO)');
+      debugPrint('🔍 Joined matchmaking queue ($points ELO, card: $selectedCardBack)');
     } catch (e) {
       debugPrint('Error joining queue: $e');
       rethrow;

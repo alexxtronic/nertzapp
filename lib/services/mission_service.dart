@@ -112,8 +112,8 @@ class MissionService {
     if (_currentUserId == null) return [];
     
     try {
-      final today = DateTime.now().toIso8601String().split('T')[0];
-      
+      // Fetch user's current active missions (most recently assigned, within 24h)
+      // The server assigns new ones if 24h has passed
       final response = await _supabase
           .from('user_missions')
           .select('''
@@ -121,7 +121,8 @@ class MissionService {
             mission:missions(name, description, icon, reward_coins, target, mission_type)
           ''')
           .eq('user_id', _currentUserId!)
-          .eq('assigned_at', today);
+          .order('assigned_at', ascending: false)
+          .limit(3); // Get most recent 3 (current batch)
       
       return (response as List)
           .map((json) => UserMission.fromJson(json))

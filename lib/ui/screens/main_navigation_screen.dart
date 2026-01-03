@@ -73,8 +73,14 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
 
   Future<void> _loadProfile() async {
     final profile = await SupabaseService().getProfile();
-    if (mounted) {
+    if (mounted && profile != null) {
       setState(() => _profile = profile);
+      
+      // CRITICAL: Set player name for game results screen
+      final username = profile['username'] as String?;
+      if (username != null && username.isNotEmpty) {
+        ref.read(playerNameProvider.notifier).state = username;
+      }
     }
   }
   

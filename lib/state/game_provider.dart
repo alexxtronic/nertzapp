@@ -627,21 +627,23 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       client.updateState(state!);
     }
     
-    // Ranked Points Update (Must happen after endRound calculates scores)
-    final pId = client.playerId;
-    if (pId != null && state!.players.containsKey(pId)) {
-       final playerState = state!.players[pId]!;
-       // Calculate placement based on total score
-       final allPlayers = state!.players.values.toList();
-       allPlayers.sort((a, b) => b.scoreTotal.compareTo(a.scoreTotal)); // Descending
-       final placement = allPlayers.indexWhere((p) => p.id == pId) + 1;
-       
-       // Report to backend
-       MatchmakingService().reportRankedMatchResult(
-         placement: placement,
-         totalPoints: playerState.scoreTotal,
-         bonusOverride: isDefaultWin ? 25 : null, // Default Win = +25 Override
-       );
+    // Ranked Points Update (ONLY for ranked games)
+    if (state!.isRanked) {
+      final pId = client.playerId;
+      if (pId != null && state!.players.containsKey(pId)) {
+         final playerState = state!.players[pId]!;
+         // Calculate placement based on total score
+         final allPlayers = state!.players.values.toList();
+         allPlayers.sort((a, b) => b.scoreTotal.compareTo(a.scoreTotal)); // Descending
+         final placement = allPlayers.indexWhere((p) => p.id == pId) + 1;
+         
+         // Report to backend
+         MatchmakingService().reportRankedMatchResult(
+           placement: placement,
+           totalPoints: playerState.scoreTotal,
+           bonusOverride: isDefaultWin ? 25 : null, // Default Win = +25 Override
+         );
+      }
     }
   }
   

@@ -56,7 +56,8 @@ post_install do |installer|
     # This replacement command mimics the logic of `readlink -f` using `dirname` and `pwd -P`
     # We replace strict string matching with a slightly flexible check or just the known target line
     original_cmd = 'source="$(readlink -f "${source}")"'
-    replacement_cmd = 'source="$(cd "$(dirname "${source}")" && pwd -P)/$(basename "${source}")"'
+    # Use Python to resolve the path explicitly - more robust than shell tricks
+    replacement_cmd = 'source="$($(which python3) -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${source}")"'
     
     if text.include?(original_cmd)
       new_contents = text.gsub(original_cmd, replacement_cmd)
