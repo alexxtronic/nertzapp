@@ -5,43 +5,86 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Support - Nertz Royale</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        .page-content {
+            padding: 8rem 2rem 4rem;
+            min-height: 80vh;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .support-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        h2.email {
+            font-size: 2rem;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 1rem 0;
+            word-break: break-all;
+        }
+    </style>
 </head>
 
 <body>
+
+    <!-- Navigation -->
     <header>
-        <div class="logo">👑 Nertz Royale Support</div>
+        <div class="nav-container">
+            <div class="logo-text">👑 Nertz Royale</div>
+            <a href="index.html" style="text-decoration:none; color: white; font-weight: 600;">Back to Home</a>
+        </div>
     </header>
 
-    <div class="legal-content" style="text-align: center;">
-        <h1>Need Help?</h1>
-        <p class="subtitle">We're here for you.</p>
+    <div class="page-content">
+        <h1 class="section-title">Need Help?</h1>
+        <p class="subtitle" style="text-align: center; margin: 0 auto;">We're here for you.</p>
 
-        <div class="feature-card" style="margin-top: 2rem;">
+        <div class="support-card">
             <h3>Contact Us</h3>
             <p>For bug reports, account issues, or feedback, please email us directly:</p>
-            <h2 style="color: var(--primary);">support@nertz.best</h2>
+            <h2 class="email">support@nertz.best</h2>
         </div>
 
         <div style="margin-top: 4rem;">
             <h3>Frequently Asked Questions</h3>
-            <div style="text-align: left; margin-top: 2rem;">
-                <h4>How do I restore purchases?</h4>
-                <p>Go to Settings in the app and tap "Restore Purchases".</p>
+            <div style="margin-top: 2rem; color: var(--text-muted);">
+                <h4 style="color: var(--text-main); margin-bottom: 0.5rem;">How do I restore purchases?</h4>
+                <p style="margin-bottom: 1.5rem;">Go to Settings in the app and tap "Restore Purchases". This will
+                    verify your App Store receipt and unlock any previously purchased non-consumable items.</p>
 
-                <h4>Is the game free?</h4>
-                <p>Yes! Nertz Royale is free to play. Cosmetic items are optional.</p>
+                <h4 style="color: var(--text-main); margin-bottom: 0.5rem;">My gems didn't show up!</h4>
+                <p style="margin-bottom: 1.5rem;">This is rare but can happen if the network drops. Email us with your
+                    Username and a screenshot of the receipt, and we will credit your account manually within 24 hours.
+                </p>
+
+                <h4 style="color: var(--text-main); margin-bottom: 0.5rem;">Is the game free?</h4>
+                <p>Yes! Nertz Royale is free to play. All card packs and cosmetics are optional.</p>
             </div>
         </div>
     </div>
 
+    <!-- Footer -->
     <footer>
-        <p>&copy; 2026 Nertz Royale. All rights reserved.</p>
-        <p>
-            <a href="index.html">Home</a> |
+        <p>&copy; 2026 Nertz Royale. Built for Winners.</p>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
             <a href="privacy.html">Privacy Policy</a>
-        </p>
+            <a href="terms.html">Terms of Service</a>
+        </div>
     </footer>
+
 </body>
 
 </html>

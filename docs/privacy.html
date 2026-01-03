@@ -5,52 +5,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy - Nertz Royale</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        .page-content {
+            padding: 8rem 2rem 4rem;
+            min-height: 80vh;
+            max-width: 800px;
+            margin: 0 auto;
+            color: var(--text-muted);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--text-main);
+        }
+
+        h3 {
+            color: var(--text-main);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        ul {
+            margin-left: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
 </head>
 
 <body>
+
+    <!-- Navigation -->
     <header>
-        <div class="logo">👑 Nertz Royale Privacy</div>
+        <div class="nav-container">
+            <div class="logo-text">👑 Nertz Royale</div>
+            <a href="index.html" style="text-decoration:none; color: white; font-weight: 600;">Back to Home</a>
+        </div>
     </header>
 
-    <div class="legal-content">
+    <div class="page-content">
         <h1>Privacy Policy</h1>
-        <p>Last updated: January 2026</p>
+        <p style="text-align: center; margin-bottom: 3rem;">Last updated: January 2026</p>
 
         <h3>1. Introduction</h3>
-        <p>Nertz Royale respects your privacy. This policy explains how we handle your data.</p>
+        <p>Nertz Royale ("we", "our", or "us") respects your privacy. This policy explains how we handle your data when
+            you use our mobile application.</p>
 
         <h3>2. Data We Collect</h3>
-        <p>We collect minimal data to provide the game service:</p>
+        <p>We collect minimal data necessary to provide the game service:</p>
         <ul>
-            <li>Account information (username, email if provided)</li>
-            <li>Game statistics (wins, rank, matches played)</li>
-            <li>Device identifiers for analytics and crash reporting</li>
+            <li><strong>Account Information:</strong> Username and user ID generated upon sign-up. Email address is only
+                stored if you sign in with Apple/Google authentication.</li>
+            <li><strong>Game Statistics:</strong> Matches played, wins/losses, rank points, and mission progress.</li>
+            <li><strong>Device Identifiers:</strong> Anonymous device IDs used for analytics, crash reporting (via
+                Firebase), and preventing duplicate accounts.</li>
         </ul>
 
         <h3>3. How We Use Data</h3>
-        <p>We use your data to:</p>
+        <p>We use your data solely to:</p>
         <ul>
-            <li>Match you with opponents of similar skill</li>
-            <li>Track your progress on leaderboards</li>
-            <li>Improve game stability and performance</li>
+            <li>Match you with opponents of similar skill level.</li>
+            <li>Track your progress on global leaderboards.</li>
+            <li>Process in-app purchases and restore inventory.</li>
+            <li>Improve game stability and fix crashes.</li>
         </ul>
 
-        <h3>4. Data Deletion</h3>
-        <p>You may request account deletion at any time by contacting support@nertz.best or using the "Delete Account"
-            option in the app settings.</p>
+        <h3>4. Data Storage & Security</h3>
+        <p>Your game data is stored securely on Supabase servers (hosted on AWS/Google Cloud). We implement
+            industry-standard security measures to protect your information.</p>
 
-        <h3>5. Third Party Services</h3>
-        <p>We use Supabase for backend services and Unity Ads (if applicable) for rewards.</p>
+        <h3>5. Data Deletion</h3>
+        <p>Relationships are temporary. You may request full account deletion at any time by:</p>
+        <ul>
+            <li>Using the "Delete Account" button in the app Settings.</li>
+            <li>Emailing us at support@nertz.best with your request.</li>
+        </ul>
+        <p>Upon deletion, all your personal data will be permanently removed from our servers within 30 days.</p>
+
+        <h3>6. Third Party Services</h3>
+        <p>We use the following third-party services:</p>
+        <ul>
+            <li><strong>Supabase:</strong> For backend database, authentication, and realtime features.</li>
+            <li><strong>RevenueCat / Apple StoreKit:</strong> For processing payments. We do not store credit card
+                details.</li>
+        </ul>
+
+        <h3>7. Contact</h3>
+        <p>If you have any questions about this policy, please contact us at support@nertz.best.</p>
     </div>
 
+    <!-- Footer -->
     <footer>
-        <p>&copy; 2026 Nertz Royale. All rights reserved.</p>
-        <p>
-            <a href="index.html">Home</a> |
+        <p>&copy; 2026 Nertz Royale. Built for Winners.</p>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
             <a href="support.html">Support</a>
-        </p>
+            <a href="terms.html">Terms of Service</a>
+        </div>
     </footer>
+
 </body>
 
 </html>
